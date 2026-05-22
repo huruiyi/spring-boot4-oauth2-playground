@@ -13,3 +13,6 @@ Thumbs.db
 
 # Temp
 temp/
+
+# Claude Code
+.claude/

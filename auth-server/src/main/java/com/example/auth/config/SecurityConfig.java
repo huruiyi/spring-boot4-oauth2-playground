@@ -15,7 +15,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -160,6 +159,7 @@ public class SecurityConfig {
         .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
         .scope("read")
         .scope("write")
+        .scope("admin")
         .clientSettings(ClientSettings.builder()
             .requireAuthorizationConsent(false)
             .build())
@@ -174,19 +174,19 @@ public class SecurityConfig {
     return registeredClientRepository;
   }
 
-    // ==================== 授权存储 ====================
+  // ==================== 授权存储 ====================
 
-    @Bean
-    public OAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate,
-                                                           RegisteredClientRepository registeredClientRepository) {
-        return new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
-    }
+  @Bean
+  public OAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate,
+                                                         RegisteredClientRepository registeredClientRepository) {
+    return new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
+  }
 
-    @Bean
-    public OAuth2AuthorizationConsentService authorizationConsentService(JdbcTemplate jdbcTemplate,
-                                                                         RegisteredClientRepository registeredClientRepository) {
-        return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
-    }
+  @Bean
+  public OAuth2AuthorizationConsentService authorizationConsentService(JdbcTemplate jdbcTemplate,
+                                                                       RegisteredClientRepository registeredClientRepository) {
+    return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
+  }
 
   // ==================== JWT 配置 ====================
 
@@ -219,21 +219,33 @@ public class SecurityConfig {
   }
 
   /**
-   * JWT 自定义 claims — 添加用户角色
+   * JWT 自定义 claims — 用户角色 + client_credentials scope→role 映射
    */
   @Bean
-  public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(UserDetailsService userDetailsService) {
+  public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
     return context -> {
       if (context.getPrincipal() != null) {
         var principal = context.getPrincipal();
         context.getClaims().claim("sub", principal.getName());
 
+        var roles = new java.util.ArrayList<String>();
+
+        // 用户角色（authorization_code 登录流程）
         var authorities = principal.getAuthorities();
         if (authorities != null && !authorities.isEmpty()) {
-          context.getClaims().claim("roles",
-              authorities.stream()
-                  .map(auth -> auth.getAuthority())
-                  .toList());
+          authorities.forEach(auth -> roles.add(auth.getAuthority()));
+        }
+
+        // client_credentials 模式：scope → role 映射
+        var scopes = context.getAuthorizedScopes();
+        if (scopes != null) {
+          if (scopes.contains("admin")) roles.add("ROLE_ADMIN");
+          if (scopes.contains("read")) roles.add("ROLE_READER");
+          if (scopes.contains("write")) roles.add("ROLE_WRITER");
+        }
+
+        if (!roles.isEmpty()) {
+          context.getClaims().claim("roles", roles);
         }
       }
     };

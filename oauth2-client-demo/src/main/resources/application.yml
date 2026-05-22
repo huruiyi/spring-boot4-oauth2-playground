@@ -16,6 +16,7 @@ spring:
             scope:
               - read
               - write
+              - admin
             client-name: Demo OAuth2 Client
         provider:
           demo-client:
