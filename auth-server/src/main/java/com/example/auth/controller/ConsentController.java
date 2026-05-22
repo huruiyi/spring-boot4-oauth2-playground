@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
@@ -22,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 public class ConsentController {
 
   private final RegisteredClientRepository registeredClientRepository;
+
+  @Qualifier("authorizationConsentService")
   private final OAuth2AuthorizationConsentService consentService;
 
   @GetMapping("/oauth2/consent")
