@@ -1,16 +1,19 @@
 package com.example.auth.config;
 
-// Redis 授权服务已弃用 — 改用 JDBC 实现（OAuth2Authorization 的 Jackson 序列化不可靠）
-// import com.example.auth.service.RedisOAuth2AuthorizationConsentService;
-// import com.example.auth.service.RedisOAuth2AuthorizationService;
+import com.example.auth.entity.User;
+import com.example.auth.repository.UserRepository;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -36,26 +39,34 @@ import org.springframework.security.oauth2.server.authorization.token.JwtEncodin
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
-import org.springframework.http.MediaType;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+  private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
+
+  private final UserRepository userRepository;
+
+  public SecurityConfig(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
+
   // ==================== Security Filter Chains ====================
 
-  /**
-   * OAuth2 授权服务器协议端点（优先级最高）
-   * 使用新的 .oauth2AuthorizationServer() DSL
-   */
   @Bean
   @Order(1)
   public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -63,14 +74,27 @@ public class SecurityConfig {
         .oauth2AuthorizationServer(authorizationServer -> {
           http.securityMatcher(authorizationServer.getEndpointsMatcher());
           authorizationServer
-              .oidc(Customizer.withDefaults());
+              .authorizationEndpoint(endpoint -> endpoint
+                  .consentPage("/oauth2/consent")
+              )
+              .oidc(oidc -> oidc
+                  .userInfoEndpoint(Customizer.withDefaults())
+              )
+              .tokenRevocationEndpoint(Customizer.withDefaults());
         })
         .authorizeHttpRequests(authorize -> authorize
             .anyRequest().authenticated()
         )
         .csrf(csrf -> csrf
-            .ignoringRequestMatchers("/oauth2/authorize")
+            .ignoringRequestMatchers(
+                "/oauth2/authorize",
+                "/oauth2/token",
+                "/oauth2/revoke",
+                "/oauth2/introspect",
+                "/connect/logout"
+            )
         )
+        .cors(Customizer.withDefaults())
         .exceptionHandling(exceptions -> exceptions
             .defaultAuthenticationEntryPointFor(
                 new LoginUrlAuthenticationEntryPoint("/login"),
@@ -79,28 +103,59 @@ public class SecurityConfig {
         )
         .oauth2ResourceServer(resourceServer -> resourceServer
             .jwt(Customizer.withDefaults())
+        )
+        .headers(headers -> headers
+            .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+            .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none';"))
         );
 
     return http.build();
   }
 
-  /**
-   * 常规 Web 安全（登录页、同意页等）
-   */
   @Bean
   @Order(2)
   public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
     http
         .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers("/login", "/css/**", "/js/**", "/error").permitAll()
+            .requestMatchers("/login", "/oauth2/consent", "/css/**", "/js/**", "/error").permitAll()
             .anyRequest().authenticated()
         )
         .formLogin(form -> form
             .loginPage("/login")
             .permitAll()
+            .successHandler((request, response, authentication) -> {
+              log.info("用户 {} 登录成功（IP: {}）", authentication.getName(), getClientIp(request));
+              response.sendRedirect("/");
+            })
+            .failureHandler((request, response, exception) -> {
+              log.warn("用户登录失败（IP: {}）: {}", getClientIp(request), exception.getMessage());
+              response.sendRedirect("/login?error");
+            })
+        )
+        .cors(Customizer.withDefaults())
+        .headers(headers -> headers
+            .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+            .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none';"))
+            .frameOptions(frame -> frame.deny())
         );
 
     return http.build();
+  }
+
+  // ==================== CORS ====================
+
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration config = new CorsConfiguration();
+    config.setAllowedOrigins(List.of("http://localhost:8080", "http://127.0.0.1:8080"));
+    config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+    config.setAllowedHeaders(List.of("*"));
+    config.setAllowCredentials(true);
+    config.setMaxAge(3600L);
+
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
+    return source;
   }
 
   // ==================== 客户端存储 ====================
@@ -109,8 +164,6 @@ public class SecurityConfig {
   public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
     JdbcRegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
 
-    // 始终重新注册客户端，确保配置与代码同步
-    // 先删除旧记录再插入，避免 redirect-uri 等配置过期
     RegisteredClient existingWebClient = registeredClientRepository.findByClientId("oidc-client");
     if (existingWebClient != null) {
       jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingWebClient.getId());
@@ -141,7 +194,7 @@ public class SecurityConfig {
         .scope("read")
         .scope("write")
         .clientSettings(ClientSettings.builder()
-            .requireAuthorizationConsent(false)
+            .requireAuthorizationConsent(true)
             .requireProofKey(true)
             .build())
         .tokenSettings(TokenSettings.builder()
@@ -219,14 +272,15 @@ public class SecurityConfig {
   }
 
   /**
-   * JWT 自定义 claims — 用户角色 + client_credentials scope→role 映射
+   * JWT 自定义 claims — 用户角色 + 用户 profile + scope→role 映射
    */
   @Bean
   public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
     return context -> {
       if (context.getPrincipal() != null) {
         var principal = context.getPrincipal();
-        context.getClaims().claim("sub", principal.getName());
+        String username = principal.getName();
+        context.getClaims().claim("sub", username);
 
         var roles = new java.util.ArrayList<String>();
 
@@ -236,7 +290,7 @@ public class SecurityConfig {
           authorities.forEach(auth -> roles.add(auth.getAuthority()));
         }
 
-        // client_credentials 模式：scope → role 映射
+        // scope → role 映射（client_credentials）
         var scopes = context.getAuthorizedScopes();
         if (scopes != null) {
           if (scopes.contains("admin")) roles.add("ROLE_ADMIN");
@@ -246,6 +300,26 @@ public class SecurityConfig {
 
         if (!roles.isEmpty()) {
           context.getClaims().claim("roles", roles);
+        }
+
+        // 补充用户 profile 信息（email, phone, nickname）
+        try {
+          var userOpt = userRepository.findByUsername(username);
+          if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            if (user.getEmail() != null) {
+              context.getClaims().claim("email", user.getEmail());
+            }
+            if (user.getPhone() != null) {
+              context.getClaims().claim("phone", user.getPhone());
+            }
+            if (user.getNickname() != null) {
+              context.getClaims().claim("nickname", user.getNickname());
+              context.getClaims().claim("preferred_username", user.getNickname());
+            }
+          }
+        } catch (Exception ignored) {
+          // client_credentials 模式下 username 是 client_id，无对应 User 记录
         }
       }
     };
@@ -263,5 +337,11 @@ public class SecurityConfig {
     return AuthorizationServerSettings.builder()
         .issuer("http://localhost:9000")
         .build();
+  }
+
+  private static String getClientIp(HttpServletRequest request) {
+    String xf = request.getHeader("X-Forwarded-For");
+    if (xf != null) return xf.split(",")[0].trim();
+    return request.getRemoteAddr();
   }
 }

@@ -1,5 +1,7 @@
 package com.example.client.config;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -13,6 +15,7 @@ import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizedCli
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
@@ -38,21 +41,42 @@ public class SecurityConfig {
                 .authorizationRequestRepository(authorizationRequestRepository)
             )
             .failureHandler((request, response, exception) -> {
-              log.error("===== OAuth2 登录失败 =====");
-              log.error("请求 URL: {}", request.getRequestURL());
-              log.error("查询参数: {}", request.getQueryString());
-              log.error("异常类型: {}", exception.getClass().getName());
-              log.error("异常信息: {}", exception.getMessage());
-              if (exception.getCause() != null) {
-                log.error("根因异常类型: {}", exception.getCause().getClass().getName());
-                log.error("根因异常信息: {}", exception.getCause().getMessage());
-              }
-              log.error("完整堆栈:", exception);
+              log.error("OAuth2 登录失败: {}", exception.getMessage(), exception);
               response.sendRedirect("/?error");
             })
         )
         .logout(logout -> logout
+            .logoutUrl("/logout")
             .logoutSuccessUrl("/")
+            .invalidateHttpSession(true)
+            .clearAuthentication(true)
+            .deleteCookies("JSESSIONID")
+            .addLogoutHandler((request, response, authentication) -> {
+              // 构造 OIDC RP-Initiated Logout URL
+              // id_token_hint 从当前 session 中获取
+              if (authentication != null) {
+                try {
+                  var authClientRepo = http.getSharedObject(OAuth2AuthorizedClientRepository.class);
+                  if (authClientRepo != null) {
+                    var authorizedClient = authClientRepo.loadAuthorizedClient(
+                        "my-client", authentication, request);
+                    if (authorizedClient != null && authorizedClient.getAccessToken() != null) {
+                      String idToken = authorizedClient.getAccessToken().getTokenValue();
+                      String logoutUrl = "http://localhost:9000/connect/logout" +
+                          "?post_logout_redirect_uri=http://localhost:8080/" +
+                          "&id_token_hint=" + idToken;
+                      log.info("Redirecting to OIDC logout: {}", logoutUrl);
+                      // 不直接重定向，交给 LogoutSuccessHandler 处理
+                    }
+                    // 清除已授权的客户端
+                    authClientRepo.removeAuthorizedClient("my-client", authentication, request, response);
+                  }
+                } catch (Exception e) {
+                  log.warn("清理 OAuth2 客户端失败: {}", e.getMessage());
+                }
+              }
+              new SecurityContextLogoutHandler().logout(request, response, authentication);
+            })
         );
 
     return http.build();
