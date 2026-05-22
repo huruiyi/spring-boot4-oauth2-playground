@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Demo Result</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    h1 { color: #333; }
+    .success { color: #16a34a; }
+    .fail { color: #dc2626; }
+    pre { background: #f3f4f6; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <h1>调用结果</h1>
+  <p><strong>模式：</strong> <span th:text="${mode}">mode</span></p>
+  <p><strong>说明：</strong> <span th:text="${description}">desc</span></p>
+
+  <div th:if="${success}">
+    <h2 class="success">调用成功</h2>
+    <pre th:text="${#strings.toString(data)}">response data</pre>
+  </div>
+
+  <div th:if="${!success}">
+    <h2 class="fail">调用失败</h2>
+    <p><strong>错误信息：</strong> <span th:text="${error}">error</span></p>
+    <p th:if="${note != null}" style="color: #6b7280;">
+      <span th:text="${note}">note</span>
+    </p>
+  </div>
+
+  <p><a href="/">返回首页</a></p>
+</body>
+</html>

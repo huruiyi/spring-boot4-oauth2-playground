@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title th:text="${title}">.oauth2Client() Demo</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    h1 { color: #333; }
+    .endpoint-list { list-style: none; padding: 0; }
+    .endpoint-list li { margin: 10px 0; }
+    .endpoint-list a { color: #2563eb; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1 th:text="${title}">.oauth2Client() 演示</h1>
+  <p>本模块仅使用 <code>.oauth2Client()</code> DSL，不使用 <code>.oauth2Login()</code>。</p>
+  <p>应用通过 <strong>client_credentials</strong> 模式以自身身份获取令牌，无需用户登录。</p>
+
+  <h2>可用端点</h2>
+  <ul class="endpoint-list">
+    <li th:each="ep : ${endpoints}">
+      <a th:href="${ep[0]}" th:text="${ep[0]}">/demo/...</a>
+      <span th:text="${' — ' + ep[1]}">description</span>
+    </li>
+  </ul>
+</body>
+</html>
