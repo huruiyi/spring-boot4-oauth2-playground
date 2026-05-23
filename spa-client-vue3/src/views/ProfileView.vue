@@ -372,10 +372,10 @@ h1 { font-size: 22px; margin: 0; color: #1e293b; }
 .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #e2e8f0; }
 .btn-ghost:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 
-.code-block { border-radius: 8px; overflow: hidden; border: 1px solid #1e293b; margin-top: 12px; }
-.code-header { background: #1e293b; padding: 6px 14px; font-size: 11px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
-.code-body { background: #0f172a; color: #a5b4fc; padding: 12px 14px; margin: 0; overflow: auto; font-size: 12px; max-height: 200px; word-break: break-all; white-space: pre-wrap; line-height: 1.6; font-family: ui-monospace, SFMono-Regular, monospace; }
-.code-body.resp { max-height: none; color: #a5b4fc; white-space: pre-wrap; word-break: break-word; overflow: hidden; }
+.code-block { border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6; margin-top: 12px; }
+.code-header { background: #f1f3f5; padding: 6px 14px; font-size: 11px; color: #495057; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+.code-body { background: #f8f9fa; color: #212529; padding: 12px 14px; margin: 0; overflow: auto; font-size: 12px; max-height: 200px; word-break: break-all; white-space: pre-wrap; line-height: 1.6; font-family: ui-monospace, SFMono-Regular, monospace; }
+.code-body.resp { max-height: none; color: #212529; white-space: pre-wrap; word-break: break-word; overflow: hidden; }
 
 .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .api-btn { padding: 5px 14px; background: #4f46e5; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }

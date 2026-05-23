@@ -109,7 +109,7 @@ public class SecurityConfig {
         .headers(headers -> headers
             .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
             .contentSecurityPolicy(csp -> csp.policyDirectives(
-                "default-src 'self'; style-src 'self'; frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001;"))
+                "default-src 'self'; style-src 'self'; frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001 http://localhost:4173 http://127.0.0.1:4173;"))
         );
 
     return http.build();
@@ -139,7 +139,7 @@ public class SecurityConfig {
     http.headers(headers -> headers
         .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
         .contentSecurityPolicy(csp -> csp.policyDirectives(
-            "default-src 'self'; style-src 'self'; frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001;"))
+            "default-src 'self'; style-src 'self'; frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001 http://localhost:4173 http://127.0.0.1:4173;"))
         .frameOptions(frame -> frame.sameOrigin())
     );
 
@@ -157,7 +157,9 @@ public class SecurityConfig {
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
-        "http://127.0.0.1:3001");
+        "http://127.0.0.1:3001",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173");
     config.setAllowedOrigins(origins);
     config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
@@ -289,8 +291,14 @@ public class SecurityConfig {
         .redirectUri("http://127.0.0.1:3001/callback")
         .redirectUri("http://localhost:3001/silent-refresh.html")
         .redirectUri("http://127.0.0.1:3001/silent-refresh.html")
+        .redirectUri("http://localhost:4173/callback")
+        .redirectUri("http://127.0.0.1:4173/callback")
+        .redirectUri("http://localhost:4173/silent-refresh.html")
+        .redirectUri("http://127.0.0.1:4173/silent-refresh.html")
         .postLogoutRedirectUri("http://localhost:3001/")
         .postLogoutRedirectUri("http://127.0.0.1:3001/")
+        .postLogoutRedirectUri("http://localhost:4173/")
+        .postLogoutRedirectUri("http://127.0.0.1:4173/")
         .scope(OidcScopes.OPENID)
         .scope(OidcScopes.PROFILE)
         .scope("read")
