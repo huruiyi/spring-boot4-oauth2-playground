@@ -104,6 +104,26 @@
         .countdown-ok { color: #16a34a; }
         .countdown-warn { color: #d97706; }
         .countdown-expired { color: #dc2626; }
+        .api-btn {
+            display: inline-block;
+            padding: 3px 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        .api-btn:hover { background: #5a6fd6; }
+        .api-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .api-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
     </style>
 </head>
 <body>
@@ -125,7 +145,7 @@
     </div>
 
     <div class="content">
-        <!-- Access Token -->
+        <!-- Token 信息区 -->
         <div class="card">
             <h3>🎫 Access Token <span id="token-countdown" class="countdown"></span></h3>
             <table class="meta-table">
@@ -139,7 +159,6 @@
             <pre th:text="${accessToken}">token...</pre>
         </div>
 
-        <!-- ID Token -->
         <div class="card">
             <h3>📋 ID Token</h3>
             <table class="meta-table">
@@ -152,7 +171,6 @@
             <pre th:text="${idTokenClaims}">claims...</pre>
         </div>
 
-        <!-- Refresh Token -->
         <div class="card" th:if="${hasRefreshToken}">
             <h3>🔄 Refresh Token</h3>
             <table class="meta-table">
@@ -162,27 +180,56 @@
             <pre th:text="${refreshTokenValue}">refresh_token...</pre>
         </div>
 
-        <!-- Resource Server - User Info -->
-        <div class="card">
-            <h3>🌐 Resource Server → /api/user/info</h3>
-            <div th:if="${userInfoError}" style="color:#e74c3c;font-size:13px;margin-bottom:10px;" th:text="${userInfoError}">Error</div>
-            <pre th:if="${userInfo}" th:text="${userInfo}">user info...</pre>
-        </div>
+        <!-- API 响应区：两列布局 -->
+        <div class="api-grid">
+            <div class="card">
+                <h3>🌐 /api/user/info
+                    <button class="api-btn" onclick="callApi('/api/user/info', 'userInfoResult')">请求</button>
+                </h3>
+                <div th:if="${userInfoError}" style="color:#e74c3c;font-size:13px;margin-bottom:10px;" th:text="${userInfoError}">Error</div>
+                <pre th:if="${userInfo}" th:text="${userInfo}">user info...</pre>
+                <pre id="userInfoResult" style="display:none;"></pre>
+            </div>
 
-        <!-- Resource Server - Messages -->
-        <div class="card">
-            <h3>💬 Resource Server → /api/user/messages</h3>
-            <div th:if="${messagesError}" style="color:#e74c3c;font-size:13px;margin-bottom:10px;" th:text="${messagesError}">Error</div>
-            <pre th:if="${messages}" th:text="${messages}">messages...</pre>
+            <div class="card">
+                <h3>💬 /api/user/messages
+                    <button class="api-btn" onclick="callApi('/api/user/messages', 'userMessagesResult')">请求</button>
+                </h3>
+                <div th:if="${messagesError}" style="color:#e74c3c;font-size:13px;margin-bottom:10px;" th:text="${messagesError}">Error</div>
+                <pre th:if="${messages}" th:text="${messages}">messages...</pre>
+                <pre id="userMessagesResult" style="display:none;"></pre>
+            </div>
         </div>
     </div>
 
+    <script>
+        function callApi(url, resultId) {
+            var el = document.getElementById(resultId);
+            var btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '请求中...';
+            el.style.display = 'block';
+            el.textContent = '请求中...';
+            fetch(url)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    el.textContent = JSON.stringify(data, null, 2);
+                    btn.disabled = false;
+                    btn.textContent = '请求';
+                })
+                .catch(function(e) {
+                    el.textContent = '请求失败: ' + e.message;
+                    btn.disabled = false;
+                    btn.textContent = '请求';
+                });
+        }
+    </script>
+
     <script th:inline="javascript">
         (function() {
-            var expiresAt = /*[[${accessTokenExpiresAt}]]*/ null;
-            if (!expiresAt) return;
+            var expiresMs = /*[[${accessTokenExpiresAtMs}]]*/ 0;
+            if (!expiresMs) return;
 
-            var expiresMs = new Date(expiresAt).getTime();
             var el = document.getElementById('token-countdown');
 
             function update() {

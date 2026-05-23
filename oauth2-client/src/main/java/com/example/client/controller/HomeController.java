@@ -106,6 +106,36 @@ public class HomeController {
     return "protected";
   }
 
+  @GetMapping("/api/user/info")
+  @org.springframework.web.bind.annotation.ResponseBody
+  public Map<String, Object> userInfoApi(
+      @RegisteredOAuth2AuthorizedClient("my-client") OAuth2AuthorizedClient authorizedClient) {
+    try {
+      return webClient.get()
+          .uri(resourceServerBaseUrl + "/api/user/info")
+          .retrieve()
+          .bodyToMono(Map.class)
+          .block();
+    } catch (Exception e) {
+      return Map.of("error", e.getMessage());
+    }
+  }
+
+  @GetMapping("/api/user/messages")
+  @org.springframework.web.bind.annotation.ResponseBody
+  public Map<String, Object> userMessagesApi(
+      @RegisteredOAuth2AuthorizedClient("my-client") OAuth2AuthorizedClient authorizedClient) {
+    try {
+      return webClient.get()
+          .uri(resourceServerBaseUrl + "/api/user/messages")
+          .retrieve()
+          .bodyToMono(Map.class)
+          .block();
+    } catch (Exception e) {
+      return Map.of("error", e.getMessage());
+    }
+  }
+
   @GetMapping("/admin")
   public String adminPage(Model model,
                           @RegisteredOAuth2AuthorizedClient("my-client") OAuth2AuthorizedClient authorizedClient) {
