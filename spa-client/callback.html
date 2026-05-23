@@ -21,6 +21,12 @@
   <script>
     (async () => {
       const statusEl = document.getElementById('status');
+
+      if (OAuth2PKCE.isAuthenticated()) {
+        window.location.replace('/');
+        return;
+      }
+
       try {
         const params = new URLSearchParams(window.location.search);
         const code = params.get('code');
@@ -30,19 +36,18 @@
         if (error) {
           statusEl.textContent = '授权失败: ' + (errorDesc || error);
           statusEl.className = 'error';
-          setTimeout(() => window.location.href = '/', 3000);
+          setTimeout(() => window.location.replace('/'), 3000);
           return;
         }
 
         if (!code) {
-          statusEl.textContent = '未收到授权码';
+          statusEl.textContent = '未收到授权码，即将返回首页';
           statusEl.className = 'error';
-          setTimeout(() => window.location.href = '/', 3000);
+          setTimeout(() => window.location.replace('/'), 3000);
           return;
         }
 
         const tokenResponse = await OAuth2PKCE.exchangeCode(code);
-        console.log('Token response:', tokenResponse);
         sessionStorage.setItem('access_token', tokenResponse.access_token);
         if (tokenResponse.refresh_token) {
           sessionStorage.setItem('refresh_token', tokenResponse.refresh_token);
@@ -52,11 +57,11 @@
         }
         sessionStorage.setItem('token_expires_at', String(Date.now() + tokenResponse.expires_in * 1000));
 
-        window.location.href = '/';
+        window.location.replace('/');
       } catch (e) {
-        statusEl.textContent = '令牌交换失败: ' + e.message;
+        statusEl.textContent = '令牌交换失败: ' + e.message + '（3秒后返回首页）';
         statusEl.className = 'error';
-        console.error('Token exchange error:', e);
+        setTimeout(() => window.location.replace('/'), 3000);
       }
     })();
   </script>
