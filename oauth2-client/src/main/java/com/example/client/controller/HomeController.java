@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.annotation.RegisteredOAuth2AuthorizedClient;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -58,9 +60,11 @@ public class HomeController {
     }
 
     // ID Token
-    model.addAttribute("idTokenClaims", oAuth2User.getAttributes());
-    Object idTokenValue = oAuth2User.getAttribute("id_token");
-    model.addAttribute("idTokenValue", idTokenValue != null ? idTokenValue.toString() : "");
+    OidcIdToken idToken = ((DefaultOidcUser) oAuth2User).getIdToken();
+    model.addAttribute("idTokenValue", idToken.getTokenValue());
+    model.addAttribute("idTokenClaims", idToken.getClaims());
+    model.addAttribute("idTokenIssuedAt", idToken.getIssuedAt());
+    model.addAttribute("idTokenExpiresAt", idToken.getExpiresAt());
 
     // 调用 Resource Server 获取用户信息
     try {

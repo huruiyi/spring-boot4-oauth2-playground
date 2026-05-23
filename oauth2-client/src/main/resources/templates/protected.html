@@ -138,11 +138,13 @@
         <!-- ID Token -->
         <div class="card">
             <h3>📋 ID Token</h3>
-            <div th:if="${idTokenValue}" style="margin-bottom:12px;">
-                <p style="color:#888;font-size:13px;margin-bottom:6px;font-weight:500;">Raw Token</p>
-                <pre th:text="${idTokenValue}">id_token...</pre>
-            </div>
-            <p style="color:#888;font-size:13px;margin-bottom:6px;font-weight:500;">Claims</p>
+            <table class="meta-table">
+                <tr><td>Issued At</td><td th:text="${idTokenIssuedAt}">-</td></tr>
+                <tr><td>Expires At</td><td th:text="${idTokenExpiresAt}">-</td></tr>
+            </table>
+            <p style="color:#888;font-size:13px;margin-bottom:6px;font-weight:500;">Raw Token</p>
+            <pre th:text="${idTokenValue}">id_token...</pre>
+            <p style="color:#888;font-size:13px;margin:12px 0 6px;font-weight:500;">Claims</p>
             <pre th:text="${idTokenClaims}">claims...</pre>
         </div>
 
