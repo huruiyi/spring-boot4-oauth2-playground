@@ -6,21 +6,24 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router'
 import oauth2 from '../utils/oauth2.js'
 
+const router = useRouter()
+
 if (oauth2.isAuthenticated()) {
-  window.location.href = '/profile'
+  router.push('/profile')
 } else {
   const params = new URLSearchParams(window.location.search)
   const code = params.get('code')
   const error = params.get('error')
 
   if (error || !code) {
-    window.location.href = '/'
+    router.push('/')
   } else {
     oauth2.exchangeCode(code)
-      .then(() => { window.location.href = '/profile' })
-      .catch(() => { window.location.href = '/' })
+      .then(() => { router.push('/profile') })
+      .catch(() => { router.push('/') })
   }
 }
 </script>
