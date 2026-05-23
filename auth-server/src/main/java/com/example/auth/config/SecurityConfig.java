@@ -69,7 +69,7 @@ public class SecurityConfig {
 
   @Bean
   @Order(1)
-  public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) {
     http
         .oauth2AuthorizationServer(authorizationServer -> {
           http.securityMatcher(authorizationServer.getEndpointsMatcher());
@@ -106,7 +106,8 @@ public class SecurityConfig {
         )
         .headers(headers -> headers
             .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
-            .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none';"))
+            .contentSecurityPolicy(csp -> csp.policyDirectives(
+                "default-src 'self'; style-src 'self'; frame-ancestors 'none';"))
         );
 
     return http.build();
@@ -125,7 +126,8 @@ public class SecurityConfig {
             .permitAll()
             .successHandler((request, response, authentication) -> {
               log.info("用户 {} 登录成功（IP: {}）", authentication.getName(), getClientIp(request));
-              response.sendRedirect("/");
+              new org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler()
+                  .onAuthenticationSuccess(request, response, authentication);
             })
             .failureHandler((request, response, exception) -> {
               log.warn("用户登录失败（IP: {}）: {}", getClientIp(request), exception.getMessage());
@@ -135,7 +137,8 @@ public class SecurityConfig {
         .cors(Customizer.withDefaults())
         .headers(headers -> headers
             .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
-            .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none';"))
+            .contentSecurityPolicy(csp -> csp.policyDirectives(
+                "default-src 'self'; style-src 'self'; frame-ancestors 'none';"))
             .frameOptions(frame -> frame.deny())
         );
 
@@ -194,7 +197,7 @@ public class SecurityConfig {
         .scope("read")
         .scope("write")
         .clientSettings(ClientSettings.builder()
-            .requireAuthorizationConsent(true)
+            .requireAuthorizationConsent(false)
             .requireProofKey(true)
             .build())
         .tokenSettings(TokenSettings.builder()
