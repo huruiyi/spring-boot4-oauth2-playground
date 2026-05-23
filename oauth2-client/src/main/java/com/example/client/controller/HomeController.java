@@ -14,6 +14,9 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 @Slf4j
@@ -22,6 +25,12 @@ import java.util.Map;
 public class HomeController {
 
   private final WebClient webClient;
+
+  private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+
+  private String formatInstant(Instant instant) {
+    return instant != null ? FMT.format(instant) : "-";
+  }
 
   @Value("${resource-server.base-url:http://localhost:9001}")
   private String resourceServerBaseUrl;
@@ -47,24 +56,26 @@ public class HomeController {
     // Access Token
     model.addAttribute("accessToken", authorizedClient.getAccessToken().getTokenValue());
     model.addAttribute("accessTokenScopes", authorizedClient.getAccessToken().getScopes());
-    model.addAttribute("accessTokenIssuedAt", authorizedClient.getAccessToken().getIssuedAt());
-    model.addAttribute("accessTokenExpiresAt", authorizedClient.getAccessToken().getExpiresAt());
+    model.addAttribute("accessTokenIssuedAt", formatInstant(authorizedClient.getAccessToken().getIssuedAt()));
+    model.addAttribute("accessTokenExpiresAt", formatInstant(authorizedClient.getAccessToken().getExpiresAt()));
+    model.addAttribute("accessTokenExpiresAtMs", authorizedClient.getAccessToken().getExpiresAt() != null
+        ? authorizedClient.getAccessToken().getExpiresAt().toEpochMilli() : 0);
     model.addAttribute("accessTokenTokenType", authorizedClient.getAccessToken().getTokenType().getValue());
 
     // Refresh Token
     model.addAttribute("hasRefreshToken", authorizedClient.getRefreshToken() != null);
     if (authorizedClient.getRefreshToken() != null) {
       model.addAttribute("refreshTokenValue", authorizedClient.getRefreshToken().getTokenValue());
-      model.addAttribute("refreshTokenIssuedAt", authorizedClient.getRefreshToken().getIssuedAt());
-      model.addAttribute("refreshTokenExpiresAt", authorizedClient.getRefreshToken().getExpiresAt());
+      model.addAttribute("refreshTokenIssuedAt", formatInstant(authorizedClient.getRefreshToken().getIssuedAt()));
+      model.addAttribute("refreshTokenExpiresAt", formatInstant(authorizedClient.getRefreshToken().getExpiresAt()));
     }
 
     // ID Token
     OidcIdToken idToken = ((DefaultOidcUser) oAuth2User).getIdToken();
     model.addAttribute("idTokenValue", idToken.getTokenValue());
     model.addAttribute("idTokenClaims", idToken.getClaims());
-    model.addAttribute("idTokenIssuedAt", idToken.getIssuedAt());
-    model.addAttribute("idTokenExpiresAt", idToken.getExpiresAt());
+    model.addAttribute("idTokenIssuedAt", formatInstant(idToken.getIssuedAt()));
+    model.addAttribute("idTokenExpiresAt", formatInstant(idToken.getExpiresAt()));
 
     // 调用 Resource Server 获取用户信息
     try {
