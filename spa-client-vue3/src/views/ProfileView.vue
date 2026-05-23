@@ -1,102 +1,124 @@
 <template>
   <div class="profile">
-    <h1>测试页 <span class="badge">公共客户端 (PKCE)</span></h1>
+    <!-- 顶部标题栏 -->
+    <div class="top-bar">
+      <h1>测试页 <span class="badge">公共客户端 (PKCE)</span></h1>
+      <button class="btn btn-ghost" @click="logout">登出</button>
+    </div>
 
-    <div v-if="error" class="error-box">{{ error }}</div>
+    <div class="hint-bar">优先使用 refresh_token 续期，无 refresh_token 时 fallback 到 Silent Refresh (iframe prompt=none)</div>
 
-    <div v-if="lastAction" class="action-log">{{ lastAction }}</div>
+    <div v-if="error" class="alert alert-error">{{ error }}</div>
+    <div v-if="lastAction" class="alert alert-info">{{ lastAction }}</div>
 
     <!-- Access Token -->
     <div class="card">
-      <h2>
-        <span class="card-icon">🎫</span> Access Token
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-icon">🎫</span> Access Token
+        </div>
         <span :class="countdownClass">{{ countdownText }}</span>
-      </h2>
-      <div class="info-row">
-        <span class="info-label">Token Type</span>
-        <span class="info-value">Bearer</span>
       </div>
-      <div class="info-row">
-        <span class="info-label">Issued At</span>
-        <span class="info-value">{{ issuedAt }}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Expires At</span>
-        <span class="info-value">{{ tokenExpiry }}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">即将过期</span>
-        <span class="info-value" :class="expiresSoonClass">{{ expiresSoonText }}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Scopes</span>
-        <span class="info-value scopes">
-          <span v-for="s in store.scopes" :key="s" class="tag">{{ s }}</span>
-          <span v-if="store.scopes.length === 0">-</span>
-        </span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Refresh Token</span>
-        <span class="info-value" :class="store.refreshToken ? 'text-ok' : 'text-warn'">{{ store.refreshToken ? '有 (旋转)' : 'No (公共客户端)' }}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">自动续期</span>
-        <span class="info-value">{{ autoRefreshEnabled ? '已开启 (过期前60秒自动续期)' : '未开启' }}</span>
+      <div class="info-table">
+        <div class="info-row">
+          <div class="info-label">Token Type</div>
+          <div class="info-value"><span class="mono">Bearer</span></div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Issued At</div>
+          <div class="info-value mono">{{ issuedAt }}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Expires At</div>
+          <div class="info-value mono">{{ tokenExpiry }}</div>
+        </div>
+        <div class="info-row highlight">
+          <div class="info-label">即将过期</div>
+          <div class="info-value" :class="expiresSoonClass">{{ expiresSoonText }}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Scopes</div>
+          <div class="info-value scopes">
+            <span v-for="s in store.scopes" :key="s" class="scope-tag">{{ s }}</span>
+            <span v-if="store.scopes.length === 0" class="text-muted">-</span>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Refresh Token</div>
+          <div class="info-value">
+            <span v-if="store.refreshToken" class="status-dot dot-green"></span>
+            <span v-else class="status-dot dot-amber"></span>
+            <span :class="store.refreshToken ? 'text-ok' : 'text-warn'">{{ store.refreshToken ? '有 (旋转)' : 'No' }}</span>
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">自动续期</div>
+          <div class="info-value">
+            <span v-if="autoRefreshEnabled" class="status-dot dot-green"></span>
+            <span v-else class="status-dot dot-gray"></span>
+            <span :class="autoRefreshEnabled ? 'text-ok' : 'text-muted'">{{ autoRefreshEnabled ? '已开启' : '未开启' }}</span>
+            <span class="text-muted meta">过期前60秒</span>
+          </div>
+        </div>
       </div>
       <div class="actions">
         <button class="btn btn-primary" @click="doRefresh" :disabled="refreshing">
-          {{ refreshing ? '续期中...' : '手动续期' }}
+          {{ refreshing ? '⏳ 续期中...' : '🔄 手动续期' }}
         </button>
         <button class="btn btn-outline" @click="toggleAutoRefresh">
           {{ autoRefreshEnabled ? '关闭自动续期' : '开启自动续期' }}
         </button>
       </div>
-      <pre class="token-display">{{ store.accessToken }}</pre>
+      <div class="code-block">
+        <div class="code-header"><span>access_token</span></div>
+        <pre class="code-body">{{ store.accessToken }}</pre>
+      </div>
     </div>
 
     <!-- ID Token -->
     <div class="card">
-      <h2><span class="card-icon">📋</span> ID Token</h2>
-      <div class="info-row">
-        <span class="info-label">Issued At</span>
-        <span class="info-value">{{ idTokenIssuedAt }}</span>
+      <div class="card-header">
+        <div class="card-title"><span class="card-icon">📋</span> ID Token</div>
       </div>
-      <div class="info-row">
-        <span class="info-label">Expires At</span>
-        <span class="info-value">{{ idTokenExpiresAt }}</span>
+      <div class="info-table">
+        <div class="info-row">
+          <div class="info-label">Issued At</div>
+          <div class="info-value mono">{{ idTokenIssuedAt }}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Expires At</div>
+          <div class="info-value mono">{{ idTokenExpiresAt }}</div>
+        </div>
       </div>
-      <p class="sub-label">Claims</p>
-      <div v-for="field in displayFields" :key="field.key" class="info-row">
-        <span class="info-label">{{ field.key }}</span>
-        <span class="info-value">{{ field.value }}</span>
+      <div class="section-label">Claims</div>
+      <div class="info-table">
+        <div class="info-row" v-for="field in displayFields" :key="field.key">
+          <div class="info-label">{{ field.key }}</div>
+          <div class="info-value" :class="isLongValue(field.value) ? 'mono-sm' : ''">{{ field.value }}</div>
+        </div>
       </div>
     </div>
 
-    <!-- API 两列布局 -->
+    <!-- API -->
     <div class="api-grid">
       <div class="card">
-        <h2>
-          <span class="card-icon">🌐</span> /api/user/info
+        <div class="card-header">
+          <div class="card-title"><span class="card-icon">🌐</span> /api/user/info</div>
           <button class="api-btn" @click="callApi('/api/user/info')">请求</button>
-        </h2>
-        <pre class="response-display">{{ userInfoResponse }}</pre>
+        </div>
+        <div class="code-block">
+          <pre class="code-body resp">{{ userInfoResponse }}</pre>
+        </div>
       </div>
       <div class="card">
-        <h2>
-          <span class="card-icon">💬</span> /api/user/messages
+        <div class="card-header">
+          <div class="card-title"><span class="card-icon">💬</span> /api/user/messages</div>
           <button class="api-btn" @click="callApi('/api/user/messages')">请求</button>
-        </h2>
-        <pre class="response-display">{{ messagesResponse }}</pre>
+        </div>
+        <div class="code-block">
+          <pre class="code-body resp">{{ messagesResponse }}</pre>
+        </div>
       </div>
-    </div>
-
-    <div class="card card-footer">
-      <div class="actions">
-        <button class="btn btn-danger" @click="logout">登出</button>
-      </div>
-      <p class="hint">
-        优先使用 refresh_token 续期，无 refresh_token 时 fallback 到 Silent Refresh (iframe prompt=none)。
-      </p>
     </div>
   </div>
 </template>
@@ -142,6 +164,10 @@ function fmtRemaining(ms) {
   return `${min}分${sec}秒`
 }
 
+function isLongValue(v) {
+  return typeof v === 'string' && v.length > 40
+}
+
 const displayFields = computed(() => {
   const c = store.claims
   if (!c) return []
@@ -184,7 +210,7 @@ function updateTokenStatus() {
     return
   }
 
-  countdownText.value = `(${fmtRemaining(remaining)})`
+  countdownText.value = fmtRemaining(remaining)
   countdownClass.value = remaining < 60000 ? 'cd-warn' : 'cd-ok'
   expiresSoonText.value = `${fmtRemaining(remaining)} 后过期`
   if (remaining < 60000) {
@@ -213,7 +239,7 @@ function startAutoRefresh() {
     const now = Date.now()
     if (rem < 60000 && rem > 0 && !refreshing.value && (now - lastRefreshTime > 5000)) {
       lastRefreshTime = now
-      lastAction.value = `[${new Date().toLocaleTimeString()}] 自动续期触发, remaining=${rem}`
+      lastAction.value = `[${new Date().toLocaleTimeString()}] 自动续期触发, remaining=${Math.round(rem / 1000)}s`
       doRefresh()
     }
     if (rem <= 0) {
@@ -237,7 +263,7 @@ async function doRefresh() {
   refreshing.value = true
   error.value = ''
   const hasRt = !!store.refreshToken
-  lastAction.value = `[${new Date().toLocaleTimeString()}] 续期开始, refreshToken=${hasRt}, remaining=${store.remaining}`
+  lastAction.value = `[${new Date().toLocaleTimeString()}] 续期开始, refreshToken=${hasRt}`
   try {
     if (hasRt) {
       await oauth2.refreshToken()
@@ -287,189 +313,71 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.profile {
-  max-width: 920px;
-  margin: 32px auto;
-  padding: 0 20px;
-}
-h1 {
-  font-size: 22px;
-  margin-bottom: 20px;
-  color: #1e293b;
-}
-.badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  background: #e0e7ff;
-  color: #4f46e5;
-  vertical-align: middle;
-  font-weight: 500;
-}
-.card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-}
-.card-footer {
-  text-align: center;
-}
-h2 {
-  font-size: 16px;
-  margin: 0 0 16px;
-  color: #334155;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 12px;
-}
-.card-icon {
-  font-size: 18px;
-}
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f8fafc;
-  font-size: 13px;
-}
-.info-label {
-  font-weight: 500;
-  color: #94a3b8;
-  min-width: 120px;
-  flex-shrink: 0;
-}
-.info-value {
-  color: #334155;
-  text-align: right;
-  flex: 1;
-}
-.scopes {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-.tag {
-  display: inline-block;
-  padding: 2px 10px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-}
+.profile { max-width: 920px; margin: 32px auto; padding: 0 20px; }
+
+.top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+h1 { font-size: 22px; margin: 0; color: #1e293b; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; background: #e0e7ff; color: #4f46e5; vertical-align: middle; font-weight: 600; letter-spacing: .3px; }
+
+.hint-bar { color: #64748b; background: #f8fafc; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 12px; border: 1px solid #e2e8f0; line-height: 1.5; }
+
+.alert { padding: 10px 16px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; line-height: 1.5; }
+.alert-error { color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; }
+.alert-info { color: #4f46e5; background: #eef2ff; border: 1px solid #c7d2fe; font-size: 12px; font-family: ui-monospace, monospace; }
+
+.card { background: #fff; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid #f1f5f9; }
+
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9; }
+.card-title { font-size: 15px; font-weight: 600; color: #334155; display: flex; align-items: center; gap: 6px; }
+.card-icon { font-size: 17px; }
+
+.info-table { margin-bottom: 4px; }
+.info-row { display: flex; align-items: center; padding: 0; border-radius: 6px; margin-bottom: 2px; font-size: 13px; }
+.info-row.highlight { background: #fffbeb; }
+.info-label { font-weight: 600; color: #94a3b8; min-width: 120px; flex-shrink: 0; padding: 8px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+.info-value { color: #1e293b; padding: 8px 12px; flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; font-weight: 500; }
+.scopes { justify-content: flex-end; }
+
+.mono { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12.5px; font-weight: 400; }
+.mono-sm { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11.5px; font-weight: 400; word-break: break-all; }
+
+.scope-tag { display: inline-block; padding: 2px 10px; background: #eef2ff; color: #4f46e5; border-radius: 10px; font-size: 11px; font-weight: 600; border: 1px solid #c7d2fe; }
+
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.dot-green { background: #22c55e; box-shadow: 0 0 4px rgba(34,197,94,.4); }
+.dot-amber { background: #f59e0b; box-shadow: 0 0 4px rgba(245,158,11,.4); }
+.dot-gray { background: #cbd5e1; }
+
+.meta { margin-left: 6px; font-weight: 400; font-size: 12px; }
+
 .text-warn { color: #d97706; font-weight: 600; }
 .text-danger { color: #dc2626; font-weight: 600; }
-.text-ok { color: #16a34a; font-weight: 500; }
+.text-ok { color: #16a34a; font-weight: 600; }
+.text-muted { color: #94a3b8; }
 
-.cd-ok { color: #16a34a; font-weight: 600; font-size: 13px; }
-.cd-warn { color: #d97706; font-weight: 600; font-size: 13px; }
-.cd-expired { color: #dc2626; font-weight: 600; font-size: 13px; }
+.cd-ok { color: #16a34a; font-weight: 700; font-size: 14px; }
+.cd-warn { color: #d97706; font-weight: 700; font-size: 14px; }
+.cd-expired { color: #dc2626; font-weight: 700; font-size: 14px; }
 
-.error-box {
-  color: #dc2626;
-  background: #fef2f2;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  border: 1px solid #fecaca;
-  font-size: 13px;
-}
-.action-log {
-  color: #4f46e5;
-  background: #eef2ff;
-  padding: 8px 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  border: 1px solid #c7d2fe;
-  font-size: 12px;
-  font-family: monospace;
-}
-.sub-label {
-  color: #94a3b8;
-  font-size: 13px;
-  margin: 16px 0 8px;
-  font-weight: 500;
-}
-.actions {
-  margin-top: 16px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.hint {
-  margin-top: 12px;
-  color: #94a3b8;
-  font-size: 12px;
-}
-.btn {
-  display: inline-block;
-  padding: 8px 20px;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.15s;
-}
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.section-label { color: #64748b; font-size: 12px; margin: 16px 0 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+
+.actions { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+.btn { display: inline-flex; align-items: center; padding: 7px 18px; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; gap: 4px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn-primary { background: #4f46e5; }
 .btn-primary:hover:not(:disabled) { background: #4338ca; }
-.btn-outline {
-  background: transparent;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
-}
+.btn-outline { background: transparent; color: #64748b; border: 1px solid #e2e8f0; }
 .btn-outline:hover:not(:disabled) { background: #f8fafc; color: #334155; }
-.btn-danger { background: #dc2626; }
-.btn-danger:hover:not(:disabled) { background: #b91c1c; }
-.token-display {
-  background: #1e293b;
-  color: #e2e8f0;
-  padding: 14px 16px;
-  border-radius: 8px;
-  overflow-x: auto;
-  font-size: 12px;
-  max-height: 120px;
-  overflow-y: auto;
-  word-break: break-all;
-  margin-top: 12px;
-  line-height: 1.6;
-}
-.response-display {
-  background: #1e293b;
-  color: #e2e8f0;
-  padding: 14px 16px;
-  border-radius: 8px;
-  overflow-x: auto;
-  font-size: 12px;
-  max-height: 250px;
-  overflow-y: auto;
-  line-height: 1.6;
-}
-.api-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-.api-btn {
-  padding: 4px 14px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  margin-left: auto;
-}
-.api-btn:hover { opacity: 0.9; }
+.btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #e2e8f0; }
+.btn-ghost:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+.code-block { border-radius: 8px; overflow: hidden; border: 1px solid #1e293b; margin-top: 12px; }
+.code-header { background: #1e293b; padding: 6px 14px; font-size: 11px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+.code-body { background: #0f172a; color: #a5b4fc; padding: 12px 14px; margin: 0; overflow: auto; font-size: 12px; max-height: 200px; word-break: break-all; white-space: pre-wrap; line-height: 1.6; font-family: ui-monospace, SFMono-Regular, monospace; }
+.code-body.resp { max-height: none; color: #a5b4fc; white-space: pre-wrap; word-break: break-word; overflow: hidden; }
+
+.api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.api-btn { padding: 5px 14px; background: #4f46e5; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }
+.api-btn:hover { background: #4338ca; }
 </style>
