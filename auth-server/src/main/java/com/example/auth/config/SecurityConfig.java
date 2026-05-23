@@ -10,6 +10,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -61,7 +62,6 @@ public class SecurityConfig {
   private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
   private final UserRepository userRepository;
-  private RegisteredClientRepository registeredClientRepositoryRef;
 
   public SecurityConfig(UserRepository userRepository) {
     this.userRepository = userRepository;
@@ -110,20 +110,7 @@ public class SecurityConfig {
             .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
             .contentSecurityPolicy(csp -> csp.policyDirectives(
                 "default-src 'self'; style-src 'self'; frame-ancestors 'none';"))
-        )
-        .addFilterBefore((request, response, chain) -> {
-            jakarta.servlet.http.HttpServletRequest req = (jakarta.servlet.http.HttpServletRequest) request;
-            if (req.getRequestURI().contains("/oauth2/authorize")) {
-                log.info("授权请求: method={}, client_id={}, redirect_uri={}, response_type={}, state={}, code_challenge={}",
-                    req.getMethod(),
-                    req.getParameter("client_id"),
-                    req.getParameter("redirect_uri"),
-                    req.getParameter("response_type"),
-                    req.getParameter("state"),
-                    req.getParameter("code_challenge") != null ? "存在" : "不存在");
-            }
-            chain.doFilter(request, response);
-        }, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+        );
 
     return http.build();
   }
@@ -131,31 +118,30 @@ public class SecurityConfig {
   @Bean
   @Order(2)
   public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
-    http
-        .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers("/login", "/oauth2/consent", "/css/**", "/js/**", "/error").permitAll()
-            .anyRequest().authenticated()
-        )
-        .formLogin(form -> form
-            .loginPage("/login")
-            .permitAll()
-            .successHandler((request, response, authentication) -> {
-              log.info("用户 {} 登录成功（IP: {}）", authentication.getName(), getClientIp(request));
-              new org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler()
-                  .onAuthenticationSuccess(request, response, authentication);
-            })
-            .failureHandler((request, response, exception) -> {
-              log.warn("用户登录失败（IP: {}）: {}", getClientIp(request), exception.getMessage());
-              response.sendRedirect("/login?error");
-            })
-        )
-        .cors(Customizer.withDefaults())
-        .headers(headers -> headers
-            .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
-            .contentSecurityPolicy(csp -> csp.policyDirectives(
-                "default-src 'self'; style-src 'self'; frame-ancestors 'none';"))
-            .frameOptions(frame -> frame.deny())
-        );
+    http.authorizeHttpRequests(authorize -> authorize
+        .requestMatchers("/login", "/oauth2/consent", "/css/**", "/js/**", "/error").permitAll()
+        .anyRequest().authenticated()
+    );
+    http.formLogin(form -> form
+        .loginPage("/login")
+        .permitAll()
+        .successHandler((request, response, authentication) -> {
+          log.info("用户 {} 登录成功（IP: {}）", authentication.getName(), getClientIp(request));
+          new org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler()
+              .onAuthenticationSuccess(request, response, authentication);
+        })
+        .failureHandler((request, response, exception) -> {
+          log.warn("用户登录失败（IP: {}）: {}", getClientIp(request), exception.getMessage());
+          response.sendRedirect("/login?error");
+        })
+    );
+    http.cors(Customizer.withDefaults());
+    http.headers(headers -> headers
+        .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+        .contentSecurityPolicy(csp -> csp.policyDirectives(
+            "default-src 'self'; style-src 'self'; frame-ancestors 'none';"))
+        .frameOptions(frame -> frame.deny())
+    );
 
     return http.build();
   }
@@ -165,7 +151,14 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of("http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"));
+    List<String> origins = List.of(
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001");
+    config.setAllowedOrigins(origins);
     config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
     config.setAllowCredentials(true);
@@ -272,7 +265,7 @@ public class SecurityConfig {
         .scope("read")
         .scope("write")
         .clientSettings(ClientSettings.builder()
-            .requireAuthorizationConsent(false)
+            .requireAuthorizationConsent(true)
             .requireProofKey(true)
             .build())
         .tokenSettings(TokenSettings.builder()
@@ -299,7 +292,7 @@ public class SecurityConfig {
         .scope("read")
         .scope("write")
         .clientSettings(ClientSettings.builder()
-            .requireAuthorizationConsent(false)
+            .requireAuthorizationConsent(true)
             .requireProofKey(true)
             .build())
         .tokenSettings(TokenSettings.builder()
@@ -311,25 +304,7 @@ public class SecurityConfig {
 
     registeredClientRepository.save(spaVue3Client);
 
-    this.registeredClientRepositoryRef = registeredClientRepository;
-
     return registeredClientRepository;
-  }
-
-  @Bean
-  public org.springframework.boot.CommandLineRunner clientDiagnostic(JdbcTemplate jdbcTemplate, RegisteredClientRepository repo) {
-    return args -> {
-      log.info("========== 客户端注册诊断 ==========");
-      java.util.List<java.util.Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT client_id, client_name, client_authentication_methods, redirect_uris FROM oauth2_registered_client");
-      for (var row : rows) {
-        log.info("DB 客户端: {}", row);
-      }
-      for (String cid : java.util.List.of("oidc-client", "spa-client", "spa-client-vue3", "resource-server")) {
-        RegisteredClient c = repo.findByClientId(cid);
-        log.info("Repository 查找 '{}': {}", cid, c != null ? "找到 - authMethods=" + c.getClientAuthenticationMethods() + ", redirectUris=" + c.getRedirectUris() : "未找到!");
-      }
-      log.info("====================================");
-    };
   }
 
   // ==================== 授权存储 ====================

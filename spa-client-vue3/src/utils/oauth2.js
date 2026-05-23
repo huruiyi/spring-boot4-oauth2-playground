@@ -108,10 +108,7 @@ function isAuthenticated() {
   if (!token) return false
   const expiresAt = sessionStorage.getItem('token_expires_at')
   if (expiresAt && Date.now() > Number(expiresAt)) {
-    sessionStorage.removeItem('access_token')
-    sessionStorage.removeItem('refresh_token')
-    sessionStorage.removeItem('id_token')
-    sessionStorage.removeItem('token_expires_at')
+    clearSession()
     return false
   }
   return true
@@ -119,10 +116,7 @@ function isAuthenticated() {
 
 function logout() {
   const idToken = sessionStorage.getItem('id_token')
-  sessionStorage.removeItem('access_token')
-  sessionStorage.removeItem('refresh_token')
-  sessionStorage.removeItem('id_token')
-  sessionStorage.removeItem('token_expires_at')
+  clearSession()
 
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
@@ -136,20 +130,75 @@ function logout() {
 }
 
 async function callResourceServer(endpoint) {
-  const token = getAccessToken()
-  if (!token) {
-    throw new Error('无有效令牌，请重新登录')
+  if (!isAuthenticated()) {
+    clearSession()
+    throw new Error('Token 已过期，请重新登录')
   }
 
+  const token = getAccessToken()
   const response = await fetch(`${RESOURCE_SERVER}${endpoint}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
+
+  if (response.status === 401) {
+    clearSession()
+    throw new Error('401: 令牌无效或已过期，请重新登录')
+  }
 
   if (!response.ok) {
     throw new Error(`请求失败: ${response.status} ${response.statusText}`)
   }
 
   return response.json()
+}
+
+function clearSession() {
+  sessionStorage.removeItem('access_token')
+  sessionStorage.removeItem('refresh_token')
+  sessionStorage.removeItem('id_token')
+  sessionStorage.removeItem('token_expires_at')
+  sessionStorage.removeItem('pkce_code_verifier')
+}
+
+function startSilentRefresh() {
+  const codeVerifier = generateRandomString(32)
+  const iframe = document.createElement('iframe')
+  iframe.style.display = 'none'
+
+  sha256(codeVerifier).then((codeChallenge) => {
+    sessionStorage.setItem('pkce_code_verifier', codeVerifier)
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      scope: SCOPES,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+      prompt: 'none'
+    })
+    iframe.src = `${AUTH_SERVER}/oauth2/authorize?${params.toString()}`
+  })
+
+  document.body.appendChild(iframe)
+
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      document.body.removeChild(iframe)
+      reject(new Error('静默刷新超时'))
+    }, 10000)
+
+    window.addEventListener('message', function handler(e) {
+      if (e.data?.type !== 'oauth2-callback') return
+      clearTimeout(timer)
+      document.body.removeChild(iframe)
+      window.removeEventListener('message', handler)
+      if (e.data.code) {
+        exchangeCode(e.data.code).then(resolve).catch(reject)
+      } else {
+        reject(new Error('静默刷新失败'))
+      }
+    })
+  })
 }
 
 export default {
@@ -160,6 +209,8 @@ export default {
   logout,
   parseJwt,
   callResourceServer,
+  startSilentRefresh,
+  clearSession,
   AUTH_SERVER,
   RESOURCE_SERVER
 }

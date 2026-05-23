@@ -33,14 +33,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import oauth2 from '../utils/oauth2.js'
-
-const router = useRouter()
-
-if (!oauth2.isAuthenticated()) {
-  router.push('/')
-}
 
 const accessToken = ref(oauth2.getAccessToken() || '')
 const claims = ref(oauth2.parseJwt(accessToken.value))

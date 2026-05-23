@@ -25,14 +25,7 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
 import oauth2 from '../utils/oauth2.js'
-
-const router = useRouter()
-
-if (oauth2.isAuthenticated()) {
-  router.push('/profile')
-}
 
 function login() {
   oauth2.startAuthorization()
