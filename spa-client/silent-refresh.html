@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><title>Silent Refresh</title></head>
+<body>
+<script>
+  var params = new URLSearchParams(window.location.search)
+  var code = params.get('code')
+  var error = params.get('error')
+  if (code) {
+    parent.postMessage({ type: 'oauth2-silent-refresh', code: code }, window.location.origin)
+  } else {
+    parent.postMessage({ type: 'oauth2-silent-refresh', error: error || 'login_required' }, window.location.origin)
+  }
+</script>
+</body>
+</html>

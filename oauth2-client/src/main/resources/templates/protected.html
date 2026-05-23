@@ -152,6 +152,7 @@
                 <tr><td>Token Type</td><td th:text="${accessTokenTokenType}">Bearer</td></tr>
                 <tr><td>Issued At</td><td th:text="${accessTokenIssuedAt}">-</td></tr>
                 <tr><td>Expires At</td><td th:text="${accessTokenExpiresAt}">-</td></tr>
+                <tr><td>即将过期</td><td id="token-expires-soon">-</td></tr>
                 <tr><td>Scopes</td><td>
                     <span class="tag" th:each="scope : ${accessTokenScopes}" th:text="${scope}">scope</span>
                 </td></tr>
@@ -230,21 +231,39 @@
             var expiresMs = /*[[${accessTokenExpiresAtMs}]]*/ 0;
             if (!expiresMs) return;
 
-            var el = document.getElementById('token-countdown');
+            var countdownEl = document.getElementById('token-countdown');
+            var soonEl = document.getElementById('token-expires-soon');
 
             function update() {
                 var remaining = expiresMs - Date.now();
                 if (remaining <= 0) {
-                    el.textContent = '已过期';
-                    el.className = 'countdown countdown-expired';
+                    countdownEl.textContent = '已过期';
+                    countdownEl.className = 'countdown countdown-expired';
+                    soonEl.textContent = '已过期';
+                    soonEl.style.color = '#dc2626';
+                    soonEl.style.fontWeight = '600';
                     return;
                 }
                 var min = Math.floor(remaining / 60000);
                 var sec = Math.floor((remaining % 60000) / 1000);
-                el.textContent = '(' + min + '分' + sec + '秒)';
-                el.className = remaining < 60000
+                countdownEl.textContent = '(' + min + '分' + sec + '秒)';
+                countdownEl.className = remaining < 60000
                     ? 'countdown countdown-warn'
                     : 'countdown countdown-ok';
+
+                if (remaining < 60000) {
+                    soonEl.textContent = sec + '秒 后过期';
+                    soonEl.style.color = '#dc2626';
+                    soonEl.style.fontWeight = '600';
+                } else if (remaining < 120000) {
+                    soonEl.textContent = '1分' + sec + '秒 后过期';
+                    soonEl.style.color = '#d97706';
+                    soonEl.style.fontWeight = '600';
+                } else {
+                    soonEl.textContent = min + '分' + sec + '秒 后过期';
+                    soonEl.style.color = '#16a34a';
+                    soonEl.style.fontWeight = '500';
+                }
             }
 
             update();

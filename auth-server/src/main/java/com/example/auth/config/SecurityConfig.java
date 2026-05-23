@@ -109,7 +109,7 @@ public class SecurityConfig {
         .headers(headers -> headers
             .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
             .contentSecurityPolicy(csp -> csp.policyDirectives(
-                "default-src 'self'; style-src 'self'; frame-ancestors 'none';"))
+                "default-src 'self'; style-src 'self'; frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001;"))
         );
 
     return http.build();
@@ -139,8 +139,8 @@ public class SecurityConfig {
     http.headers(headers -> headers
         .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
         .contentSecurityPolicy(csp -> csp.policyDirectives(
-            "default-src 'self'; style-src 'self'; frame-ancestors 'none';"))
-        .frameOptions(frame -> frame.deny())
+            "default-src 'self'; style-src 'self'; frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001;"))
+        .frameOptions(frame -> frame.sameOrigin())
     );
 
     return http.build();
@@ -224,7 +224,7 @@ public class SecurityConfig {
             .requireProofKey(true)
             .build())
         .tokenSettings(TokenSettings.builder()
-            .accessTokenTimeToLive(Duration.ofMinutes(1))
+            .accessTokenTimeToLive(Duration.ofMinutes(3))
             .refreshTokenTimeToLive(Duration.ofDays(30))
             .reuseRefreshTokens(false)
             .build())
@@ -243,7 +243,7 @@ public class SecurityConfig {
             .requireAuthorizationConsent(false)
             .build())
         .tokenSettings(TokenSettings.builder()
-            .accessTokenTimeToLive(Duration.ofMinutes(1))
+            .accessTokenTimeToLive(Duration.ofMinutes(3))
             .build())
         .build();
 
@@ -258,6 +258,8 @@ public class SecurityConfig {
         .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
         .redirectUri("http://localhost:3000/callback.html")
         .redirectUri("http://127.0.0.1:3000/callback.html")
+        .redirectUri("http://localhost:3000/silent-refresh.html")
+        .redirectUri("http://127.0.0.1:3000/silent-refresh.html")
         .postLogoutRedirectUri("http://localhost:3000/")
         .postLogoutRedirectUri("http://127.0.0.1:3000/")
         .scope(OidcScopes.OPENID)
@@ -269,7 +271,7 @@ public class SecurityConfig {
             .requireProofKey(true)
             .build())
         .tokenSettings(TokenSettings.builder()
-            .accessTokenTimeToLive(Duration.ofMinutes(1))
+            .accessTokenTimeToLive(Duration.ofMinutes(3))
             .refreshTokenTimeToLive(Duration.ofDays(30))
             .reuseRefreshTokens(false)
             .build())
@@ -285,6 +287,8 @@ public class SecurityConfig {
         .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
         .redirectUri("http://localhost:3001/callback")
         .redirectUri("http://127.0.0.1:3001/callback")
+        .redirectUri("http://localhost:3001/silent-refresh.html")
+        .redirectUri("http://127.0.0.1:3001/silent-refresh.html")
         .postLogoutRedirectUri("http://localhost:3001/")
         .postLogoutRedirectUri("http://127.0.0.1:3001/")
         .scope(OidcScopes.OPENID)
@@ -296,7 +300,7 @@ public class SecurityConfig {
             .requireProofKey(true)
             .build())
         .tokenSettings(TokenSettings.builder()
-            .accessTokenTimeToLive(Duration.ofMinutes(1))
+            .accessTokenTimeToLive(Duration.ofMinutes(3))
             .refreshTokenTimeToLive(Duration.ofDays(30))
             .reuseRefreshTokens(false)
             .build())
