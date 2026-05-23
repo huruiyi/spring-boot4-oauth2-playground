@@ -4,9 +4,11 @@ import java.security.Principal;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
-import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent;
-import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.*;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.stereotype.Controller;
@@ -21,9 +23,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ConsentController {
 
-  private final RegisteredClientRepository registeredClientRepository;
+  private static final Logger log = LoggerFactory.getLogger(ConsentController.class);
 
+  private final RegisteredClientRepository registeredClientRepository;
   private final OAuth2AuthorizationConsentService consentService;
+  private final OAuth2AuthorizationService authorizationService;
 
   @GetMapping("/oauth2/consent")
   public String consent(
@@ -31,8 +35,14 @@ public class ConsentController {
       @RequestParam(OAuth2ParameterNames.SCOPE) String scope,
       @RequestParam(OAuth2ParameterNames.STATE) String state,
       @RequestParam(value = OAuth2ParameterNames.USER_CODE, required = false) String userCode,
+      HttpServletRequest request,
       Principal principal,
       Model model) {
+
+    log.info("Consent 控制器: clientId={}, state={}, scope={}", clientId, state, scope);
+
+    OAuth2Authorization authorization = authorizationService.findByToken(state, new OAuth2TokenType(OAuth2ParameterNames.STATE));
+    log.info("按 state 查找授权记录: {}", authorization != null ? "找到(id=" + authorization.getId() + ")" : "未找到!");
 
     RegisteredClient client = registeredClientRepository.findByClientId(clientId);
 
@@ -49,9 +59,6 @@ public class ConsentController {
     model.addAttribute("newScopes", newScopes);
     model.addAttribute("previouslyApprovedScopes", previouslyApprovedScopes);
     model.addAttribute("principalName", principal.getName());
-    model.addAttribute("redirectUri", client != null && client.getRedirectUris() != null
-        ? client.getRedirectUris().iterator().next()
-        : "/");
     model.addAttribute("userCode", userCode);
 
     if (requestedScopes.isEmpty()) {

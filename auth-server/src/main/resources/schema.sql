@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS oauth2_registered_client (
     redirect_uris varchar(1000) DEFAULT NULL,
     post_logout_redirect_uris varchar(1000) DEFAULT NULL,
     scopes varchar(1000) NOT NULL,
-    client_settings varchar(2000) NOT NULL,
-    token_settings varchar(2000) NOT NULL,
+    client_settings varchar(4000) NOT NULL,
+    token_settings varchar(4000) NOT NULL,
     PRIMARY KEY (id)
 );
 

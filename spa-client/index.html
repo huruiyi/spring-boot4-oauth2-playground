@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPA Client - OAuth2 PKCE</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+    .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 24px; margin-bottom: 20px; }
+    h2 { font-size: 18px; margin: 20px 0 10px; color: #555; }
+    .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .btn { display: inline-block; padding: 10px 24px; background: #4f46e5; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; text-decoration: none; }
+    .btn:hover { background: #4338ca; }
+    .btn-danger { background: #dc2626; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-success { background: #16a34a; }
+    .btn-success:hover { background: #15803d; }
+    pre { background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; max-height: 300px; overflow-y: auto; }
+    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .info-label { font-weight: 600; color: #555; }
+    .hidden { display: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #e0e7ff; color: #4f46e5; }
+    .error { color: #dc2626; background: #fef2f2; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SPA Client <span class="badge">PKCE</span></h1>
+
+    <div id="error-msg" class="error hidden"></div>
+
+    <!-- 未登录状态 -->
+    <div id="login-section">
+      <div class="card">
+        <h2>OAuth2 授权码 + PKCE 流程</h2>
+        <p style="margin: 12px 0; color: #666;">
+          此 SPA 应用使用公共客户端（client_id: <code>spa-client</code>），无 client_secret。<br>
+          通过 PKCE (Proof Key for Code Exchange) 保护授权码流程的安全性。
+        </p>
+        <button class="btn" onclick="login()">登录</button>
+      </div>
+      <div class="card">
+        <h2>PKCE 流程说明</h2>
+        <ol style="padding-left: 20px; line-height: 1.8; color: #555;">
+          <li>客户端生成随机 <code>code_verifier</code></li>
+          <li>计算 <code>code_challenge = SHA-256(code_verifier)</code></li>
+          <li>授权请求携带 <code>code_challenge</code></li>
+          <li>令牌请求携带原始 <code>code_verifier</code></li>
+          <li>授权服务器验证哈希匹配，签发令牌</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- 已登录状态 -->
+    <div id="authenticated-section" class="hidden">
+      <div class="card">
+        <h2>用户信息</h2>
+        <div id="user-info"></div>
+      </div>
+      <div class="card">
+        <h2>Access Token</h2>
+        <pre id="access-token"></pre>
+        <button class="btn btn-success" onclick="callResourceServer()" style="margin-top: 12px;">调用 Resource Server</button>
+        <button class="btn btn-danger" onclick="logout()" style="margin-top: 12px;">登出</button>
+        <p style="margin-top: 12px; color: #666; font-size: 12px;">
+          <strong>注意</strong>：SPA 作为公共客户端不持有刷新令牌，Token 过期后请重新登录。
+        </p>
+      </div>
+      <div class="card">
+        <h2>Resource Server 响应</h2>
+        <pre id="resource-response">点击上方按钮调用 API</pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/oauth2-pkce.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

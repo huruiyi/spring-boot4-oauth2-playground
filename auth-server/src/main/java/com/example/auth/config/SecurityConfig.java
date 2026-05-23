@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -60,6 +61,7 @@ public class SecurityConfig {
   private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
   private final UserRepository userRepository;
+  private RegisteredClientRepository registeredClientRepositoryRef;
 
   public SecurityConfig(UserRepository userRepository) {
     this.userRepository = userRepository;
@@ -108,7 +110,20 @@ public class SecurityConfig {
             .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
             .contentSecurityPolicy(csp -> csp.policyDirectives(
                 "default-src 'self'; style-src 'self'; frame-ancestors 'none';"))
-        );
+        )
+        .addFilterBefore((request, response, chain) -> {
+            jakarta.servlet.http.HttpServletRequest req = (jakarta.servlet.http.HttpServletRequest) request;
+            if (req.getRequestURI().contains("/oauth2/authorize")) {
+                log.info("授权请求: method={}, client_id={}, redirect_uri={}, response_type={}, state={}, code_challenge={}",
+                    req.getMethod(),
+                    req.getParameter("client_id"),
+                    req.getParameter("redirect_uri"),
+                    req.getParameter("response_type"),
+                    req.getParameter("state"),
+                    req.getParameter("code_challenge") != null ? "存在" : "不存在");
+            }
+            chain.doFilter(request, response);
+        }, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }
@@ -150,7 +165,7 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of("http://localhost:8080", "http://127.0.0.1:8080"));
+    config.setAllowedOrigins(List.of("http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:3000", "http://127.0.0.1:3000"));
     config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
     config.setAllowCredentials(true);
@@ -164,18 +179,27 @@ public class SecurityConfig {
   // ==================== 客户端存储 ====================
 
   @Bean
+  @Primary
   public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
     JdbcRegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
 
     RegisteredClient existingWebClient = registeredClientRepository.findByClientId("oidc-client");
     if (existingWebClient != null) {
-      jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingWebClient.getId());
+      jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existingWebClient.getId());
       jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existingWebClient.getId());
+      jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingWebClient.getId());
     }
     RegisteredClient existingResourceServerClient = registeredClientRepository.findByClientId("resource-server");
     if (existingResourceServerClient != null) {
-      jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingResourceServerClient.getId());
+      jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existingResourceServerClient.getId());
       jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existingResourceServerClient.getId());
+      jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingResourceServerClient.getId());
+    }
+    RegisteredClient existingSpaClient = registeredClientRepository.findByClientId("spa-client");
+    if (existingSpaClient != null) {
+      jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existingSpaClient.getId());
+      jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existingSpaClient.getId());
+      jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingSpaClient.getId());
     }
 
     RegisteredClient webClient = RegisteredClient.withId(UUID.randomUUID().toString())
@@ -227,7 +251,52 @@ public class SecurityConfig {
     registeredClientRepository.save(webClient);
     registeredClientRepository.save(resourceServerClient);
 
+    RegisteredClient spaClient = RegisteredClient.withId(UUID.randomUUID().toString())
+        .clientId("spa-client")
+        .clientName("SPA Client")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .redirectUri("http://localhost:3000/callback.html")
+        .redirectUri("http://127.0.0.1:3000/callback.html")
+        .postLogoutRedirectUri("http://localhost:3000/")
+        .postLogoutRedirectUri("http://127.0.0.1:3000/")
+        .scope(OidcScopes.OPENID)
+        .scope(OidcScopes.PROFILE)
+        .scope("read")
+        .scope("write")
+        .clientSettings(ClientSettings.builder()
+            .requireAuthorizationConsent(false)
+            .requireProofKey(true)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .accessTokenTimeToLive(Duration.ofHours(1))
+            .refreshTokenTimeToLive(Duration.ofDays(30))
+            .reuseRefreshTokens(false)
+            .build())
+        .build();
+
+    registeredClientRepository.save(spaClient);
+
+    this.registeredClientRepositoryRef = registeredClientRepository;
+
     return registeredClientRepository;
+  }
+
+  @Bean
+  public org.springframework.boot.CommandLineRunner clientDiagnostic(JdbcTemplate jdbcTemplate, RegisteredClientRepository repo) {
+    return args -> {
+      log.info("========== 客户端注册诊断 ==========");
+      java.util.List<java.util.Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT client_id, client_name, client_authentication_methods, redirect_uris FROM oauth2_registered_client");
+      for (var row : rows) {
+        log.info("DB 客户端: {}", row);
+      }
+      for (String cid : java.util.List.of("oidc-client", "spa-client", "resource-server")) {
+        RegisteredClient c = repo.findByClientId(cid);
+        log.info("Repository 查找 '{}': {}", cid, c != null ? "找到 - authMethods=" + c.getClientAuthenticationMethods() + ", redirectUris=" + c.getRedirectUris() : "未找到!");
+      }
+      log.info("====================================");
+    };
   }
 
   // ==================== 授权存储 ====================

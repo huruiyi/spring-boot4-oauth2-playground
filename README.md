@@ -126,6 +126,20 @@ cd oauth2-client
 mvn spring-boot:run
 ```
 
+**终端 4 — 启动 SPA Client（任选一种方式）**
+
+方式一：Python HTTP Server
+```bash
+cd spa-client
+python -m http.server 3000
+```
+
+方式二：Node.js npx
+```bash
+cd spa-client
+npx serve -l 3000
+```
+
 ### 5. 测试流程
 
 #### 方式一：浏览器测试（推荐）
@@ -139,7 +153,16 @@ mvn spring-boot:run
 5. 登录后显示授权同意页，勾选权限并同意
 6. 自动跳转回 Client 应用，展示用户信息和从 Resource Server 获取的数据
 
-#### 方式二：curl 测试
+#### 方式二：SPA 客户端测试（PKCE 演示）
+
+1. 确保已启动 SPA Client（端口 3000）
+2. 打开 http://localhost:3000
+3. 点击"登录"，跳转到 Auth Server 登录页
+4. 输入账号密码（`admin`/`password` 或 `user`/`password`）
+5. 授权同意后跳回 SPA，显示用户信息和 JWT
+6. 点击"调用 Resource Server"获取受保护数据
+
+#### 方式三：curl 测试
 
 **获取授权码 (浏览器访问)**
 ```
@@ -200,12 +223,78 @@ OAuth2 客户端应用：
 - 通过 WebClient 调用 Resource Server API
 - 展示用户信息、Token Claims、受保护数据
 
+### spa-client (端口 3000)
+
+纯前端 SPA 应用（HTML + 原生 JS），演示 PKCE 完整流程：
+
+- 公共客户端 (`client_id: spa-client`)，无 client_secret，认证方式为 `NONE`
+- 手动实现 PKCE：生成 `code_verifier` / `code_challenge`，SHA-256 哈希
+- 授权码换取令牌时携带 `code_verifier`
+- **无 `refresh_token`**：Spring Authorization Server 默认不向公共客户端颁发刷新令牌
+- Access Token 过期后应**重定向到登录页**而非刷新令牌
+- 支持 OIDC 登出
+- 调用 Resource Server 获取受保护数据
+
+#### 重要安全说明
+
+对于 SPA 等公共客户端：
+1. **无刷新令牌**：由于 `ClientAuthenticationMethod.NONE`（无 client_secret），Spring Authorization Server 不颁发 `refresh_token`
+2. **令牌过期处理**：Access Token 过期后应触发重定向到授权服务器重新登录，或使用 Silent Refresh（`prompt=none`）
+3. **Session 存储**：`code_verifier`、Token 等存储在 `sessionStorage`，页面关闭即清除，确保安全
+
+#### 启动 SPA 客户端
+
+```bash
+# 方式一：Python HTTP Server
+cd spa-client
+python -m http.server 3000
+
+# 方式二：Node.js npx serve
+cd spa-client
+npx serve -l 3000
+```
+
+访问 http://localhost:3000 测试完整 OAuth2 PKCE 流程。
+
+## PKCE（Proof Key for Code Exchange）
+
+PKCE 是 OAuth 2.0 授权码流程的安全增强机制，已在 `oidc-client` 上通过 `requireProofKey(true)` 启用。
+
+### PKCE 作用
+
+| 作用 | 说明 |
+|------|------|
+| **防止授权码拦截攻击** | 攻击者即使截获授权码，没有 `code_verifier` 也无法换取令牌 |
+| **替代 client_secret** | 公共客户端（SPA、移动 App）无法安全存储密钥，PKCE 提供等效安全保障 |
+| **绑定授权请求与令牌请求** | `code_challenge` 和 `code_verifier` 的哈希关系确保只有发起授权的客户端才能完成令牌交换 |
+
+### PKCE 工作流程
+
+1. 客户端生成随机 `code_verifier`，计算 `code_challenge = SHA256(code_verifier)`
+2. 授权请求携带 `code_challenge` + `code_challenge_method=S256`，授权服务器缓存
+3. 换取令牌时客户端发送原始 `code_verifier`，服务器验证哈希是否匹配
+4. 授权码被截获也无法使用（攻击者没有 `code_verifier`）
+
+### 本项目 PKCE 配置
+
+在 `auth-server/.../SecurityConfig.java` 中：
+
+```java
+.clientSettings(ClientSettings.builder()
+    .requireAuthorizationConsent(false)
+    .requireProofKey(true)    // PKCE 强制启用
+    .build())
+```
+
+> **注意**：当 `requireProofKey(true)` 时，使用授权码流程的客户端**必须**提供 PKCE 参数，否则授权服务器拒绝请求。Spring Security 的 `oauth2Login()` 会自动处理 PKCE，SPA 需要手动实现。
+
 ## 预置客户端
 
-| Client ID | Secret | 授权类型 | 说明 |
-|-----------|--------|----------|------|
-| `oidc-client` | `secret` | authorization_code, refresh_token | Web 客户端 (PKCE) |
-| `resource-server` | `secret` | client_credentials | 服务间调用 |
+| Client ID | Secret | 认证方式 | 授权类型 | 说明 |
+|-----------|--------|----------|----------|------|
+| `oidc-client` | `secret` | CLIENT_SECRET_BASIC | authorization_code, refresh_token | Web 客户端 (PKCE) |
+| `spa-client` | 无 (公共客户端) | NONE | authorization_code, refresh_token | SPA 客户端 (PKCE 必须) |
+| `resource-server` | `secret` | CLIENT_SECRET_BASIC | client_credentials | 服务间调用 |
 
 ## 预置用户
 

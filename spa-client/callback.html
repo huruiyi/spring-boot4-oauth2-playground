@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>授权回调中...</title>
+  <style>
+    body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f5f5f5; }
+    .spinner { border: 4px solid #e0e0e0; border-top: 4px solid #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .container { text-align: center; }
+    p { margin-top: 16px; color: #555; }
+    .error { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <p id="status">正在交换授权码获取令牌...</p>
+  </div>
+  <script src="js/oauth2-pkce.js"></script>
+  <script>
+    (async () => {
+      const statusEl = document.getElementById('status');
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const error = params.get('error');
+        const errorDesc = params.get('error_description');
+
+        if (error) {
+          statusEl.textContent = '授权失败: ' + (errorDesc || error);
+          statusEl.className = 'error';
+          setTimeout(() => window.location.href = '/', 3000);
+          return;
+        }
+
+        if (!code) {
+          statusEl.textContent = '未收到授权码';
+          statusEl.className = 'error';
+          setTimeout(() => window.location.href = '/', 3000);
+          return;
+        }
+
+        const tokenResponse = await OAuth2PKCE.exchangeCode(code);
+        console.log('Token response:', tokenResponse);
+        sessionStorage.setItem('access_token', tokenResponse.access_token);
+        if (tokenResponse.refresh_token) {
+          sessionStorage.setItem('refresh_token', tokenResponse.refresh_token);
+        }
+        if (tokenResponse.id_token) {
+          sessionStorage.setItem('id_token', tokenResponse.id_token);
+        }
+        sessionStorage.setItem('token_expires_at', String(Date.now() + tokenResponse.expires_in * 1000));
+
+        window.location.href = '/';
+      } catch (e) {
+        statusEl.textContent = '令牌交换失败: ' + e.message;
+        statusEl.className = 'error';
+        console.error('Token exchange error:', e);
+      }
+    })();
+  </script>
+</body>
+</html>
