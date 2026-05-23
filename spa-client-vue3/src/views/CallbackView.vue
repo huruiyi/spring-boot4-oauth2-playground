@@ -7,11 +7,14 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { useOAuth2Store } from '../stores/oauth2.js'
 import oauth2 from '../utils/oauth2.js'
 
 const router = useRouter()
+const store = useOAuth2Store()
+store.restore()
 
-if (oauth2.isAuthenticated()) {
+if (store.isAuthenticated) {
   router.push('/profile')
 } else {
   const params = new URLSearchParams(window.location.search)

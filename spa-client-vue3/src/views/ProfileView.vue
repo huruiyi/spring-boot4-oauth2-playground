@@ -4,6 +4,8 @@
 
     <div v-if="error" class="error-box">{{ error }}</div>
 
+    <div v-if="lastAction" class="action-log">{{ lastAction }}</div>
+
     <!-- Access Token -->
     <div class="card">
       <h2>
@@ -20,7 +22,7 @@
       </div>
       <div class="info-row">
         <span class="info-label">Expires At</span>
-        <span class="info-value">{{ expiresAt }}</span>
+        <span class="info-value">{{ tokenExpiry }}</span>
       </div>
       <div class="info-row">
         <span class="info-label">即将过期</span>
@@ -29,27 +31,27 @@
       <div class="info-row">
         <span class="info-label">Scopes</span>
         <span class="info-value scopes">
-          <span v-for="s in scopes" :key="s" class="tag">{{ s }}</span>
-          <span v-if="scopes.length === 0">-</span>
+          <span v-for="s in store.scopes" :key="s" class="tag">{{ s }}</span>
+          <span v-if="store.scopes.length === 0">-</span>
         </span>
       </div>
       <div class="info-row">
         <span class="info-label">Refresh Token</span>
-        <span class="info-value text-warn">No (公共客户端)</span>
+        <span class="info-value" :class="store.refreshToken ? 'text-ok' : 'text-warn'">{{ store.refreshToken ? '有 (旋转)' : 'No (公共客户端)' }}</span>
       </div>
       <div class="info-row">
         <span class="info-label">自动续期</span>
-        <span class="info-value">{{ autoRefreshEnabled ? '已开启 (过期前60秒 Silent Refresh)' : '未开启' }}</span>
+        <span class="info-value">{{ autoRefreshEnabled ? '已开启 (过期前60秒自动续期)' : '未开启' }}</span>
       </div>
       <div class="actions">
-        <button class="btn btn-primary" @click="silentRefresh" :disabled="refreshing">
-          {{ refreshing ? '续期中...' : '手动续期 (Silent Refresh)' }}
+        <button class="btn btn-primary" @click="doRefresh" :disabled="refreshing">
+          {{ refreshing ? '续期中...' : '手动续期' }}
         </button>
         <button class="btn btn-outline" @click="toggleAutoRefresh">
           {{ autoRefreshEnabled ? '关闭自动续期' : '开启自动续期' }}
         </button>
       </div>
-      <pre class="token-display">{{ accessToken }}</pre>
+      <pre class="token-display">{{ store.accessToken }}</pre>
     </div>
 
     <!-- ID Token -->
@@ -93,7 +95,7 @@
         <button class="btn btn-danger" @click="logout">登出</button>
       </div>
       <p class="hint">
-        SPA 公共客户端 (ClientAuthenticationMethod.NONE) 无 refresh_token，通过 Silent Refresh (prompt=none) 续期。
+        优先使用 refresh_token 续期，无 refresh_token 时 fallback 到 Silent Refresh (iframe prompt=none)。
       </p>
     </div>
   </div>
@@ -101,10 +103,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useOAuth2Store } from '../stores/oauth2.js'
 import oauth2 from '../utils/oauth2.js'
 
-const accessToken = ref(oauth2.getAccessToken() || '')
-const claims = ref(oauth2.parseJwt(accessToken.value) || {})
+const store = useOAuth2Store()
+
 const error = ref('')
 const refreshing = ref(false)
 const autoRefreshEnabled = ref(true)
@@ -112,14 +115,14 @@ const autoRefreshEnabled = ref(true)
 const countdownText = ref('')
 const countdownClass = ref('')
 const issuedAt = ref('-')
-const expiresAt = ref('-')
+const tokenExpiry = ref('-')
 const expiresSoonText = ref('-')
 const expiresSoonClass = ref('')
 const idTokenIssuedAt = ref('-')
 const idTokenExpiresAt = ref('-')
-const scopes = ref([])
 const userInfoResponse = ref('点击请求按钮')
 const messagesResponse = ref('点击请求按钮')
+const lastAction = ref('')
 
 let countdownTimer = null
 let refreshTimer = null
@@ -140,7 +143,7 @@ function fmtRemaining(ms) {
 }
 
 const displayFields = computed(() => {
-  const c = claims.value
+  const c = store.claims
   if (!c) return []
   const fields = ['sub', 'preferred_username', 'nickname', 'email', 'phone', 'scp', 'scope', 'roles', 'iss', 'aud', 'azp', 'jti', 'sid']
   return fields
@@ -154,36 +157,16 @@ const displayFields = computed(() => {
 })
 
 function updateTokenStatus() {
-  const c = claims.value || {}
-
-  // 从 sessionStorage 获取 token_expires_at，如果没有则从 JWT exp 字段推算
-  let expiresAtMs = Number(sessionStorage.getItem('token_expires_at'))
-  if ((!expiresAtMs || isNaN(expiresAtMs)) && c.exp) {
-    expiresAtMs = c.exp * 1000
-  }
-
+  const c = store.claims || {}
+  const expMs = store.expiresAtMs || 0
   const now = Date.now()
 
-  // Issued At
-  if (c.iat) {
-    issuedAt.value = fmtDate(c.iat * 1000)
-  }
-
-  // Expires At
-  if (expiresAtMs > 0) {
-    expiresAt.value = fmtDate(expiresAtMs)
-  }
-
-  // Scopes (Spring Authorization Server uses 'scp' for access_token, 'scope' for id_token)
-  const scopeStr = c.scp || c.scope || ''
-  scopes.value = scopeStr ? (typeof scopeStr === 'string' ? scopeStr.split(' ').filter(Boolean) : scopeStr) : []
-
-  // ID Token times
+  if (c.iat) issuedAt.value = fmtDate(c.iat * 1000)
+  if (expMs > 0) tokenExpiry.value = fmtDate(expMs)
   if (c.iat) idTokenIssuedAt.value = fmtDate(c.iat * 1000)
   if (c.exp) idTokenExpiresAt.value = fmtDate(c.exp * 1000)
 
-  // Countdown + 即将过期
-  if (!expiresAtMs || isNaN(expiresAtMs) || expiresAtMs <= 0) {
+  if (!expMs || expMs <= 0) {
     countdownText.value = ''
     countdownClass.value = ''
     expiresSoonText.value = '-'
@@ -191,7 +174,7 @@ function updateTokenStatus() {
     return
   }
 
-  const remaining = expiresAtMs - now
+  const remaining = expMs - now
 
   if (remaining <= 0) {
     countdownText.value = '已过期'
@@ -201,11 +184,8 @@ function updateTokenStatus() {
     return
   }
 
-  // 标题旁倒计时
   countdownText.value = `(${fmtRemaining(remaining)})`
   countdownClass.value = remaining < 60000 ? 'cd-warn' : 'cd-ok'
-
-  // 即将过期行
   expiresSoonText.value = `${fmtRemaining(remaining)} 后过期`
   if (remaining < 60000) {
     expiresSoonClass.value = 'text-danger'
@@ -218,9 +198,7 @@ function updateTokenStatus() {
 
 function startCountdown() {
   stopCountdown()
-  countdownTimer = setInterval(() => {
-    updateTokenStatus()
-  }, 1000)
+  countdownTimer = setInterval(updateTokenStatus, 1000)
 }
 
 function stopCountdown() {
@@ -229,19 +207,17 @@ function stopCountdown() {
 
 function startAutoRefresh() {
   stopAutoRefresh()
+  let lastRefreshTime = 0
   refreshTimer = setInterval(() => {
-    let expiresAtMs = Number(sessionStorage.getItem('token_expires_at'))
-    if (!expiresAtMs || isNaN(expiresAtMs)) {
-      const c = claims.value || {}
-      if (c.exp) expiresAtMs = c.exp * 1000
+    const rem = store.expiresAtMs ? store.expiresAtMs - Date.now() : 0
+    const now = Date.now()
+    if (rem < 60000 && rem > 0 && !refreshing.value && (now - lastRefreshTime > 5000)) {
+      lastRefreshTime = now
+      lastAction.value = `[${new Date().toLocaleTimeString()}] 自动续期触发, remaining=${rem}`
+      doRefresh()
     }
-    if (!expiresAtMs) return
-    const remaining = expiresAtMs - Date.now()
-    if (remaining < 60000 && remaining > 0 && !refreshing.value) {
-      silentRefresh()
-    }
-    if (remaining <= 0) {
-      oauth2.clearSession()
+    if (rem <= 0) {
+      store.clear()
       window.location.href = '/'
     }
   }, 1000)
@@ -257,16 +233,23 @@ function toggleAutoRefresh() {
   else stopAutoRefresh()
 }
 
-async function silentRefresh() {
+async function doRefresh() {
   refreshing.value = true
   error.value = ''
+  const hasRt = !!store.refreshToken
+  lastAction.value = `[${new Date().toLocaleTimeString()}] 续期开始, refreshToken=${hasRt}, remaining=${store.remaining}`
   try {
-    await oauth2.startSilentRefresh()
-    accessToken.value = oauth2.getAccessToken() || ''
-    claims.value = oauth2.parseJwt(accessToken.value) || {}
+    if (hasRt) {
+      await oauth2.refreshToken()
+      lastAction.value += ' → refreshToken成功'
+    } else {
+      await oauth2.startSilentRefresh()
+      lastAction.value += ' → silentRefresh成功'
+    }
     updateTokenStatus()
   } catch (e) {
-    error.value = 'Silent Refresh 失败: ' + e.message
+    error.value = '续期失败: ' + e.message
+    lastAction.value += ' → 失败: ' + e.message
   } finally {
     refreshing.value = false
   }
@@ -291,6 +274,7 @@ async function callApi(endpoint) {
 }
 
 onMounted(() => {
+  store.restore()
   updateTokenStatus()
   startCountdown()
   if (autoRefreshEnabled.value) startAutoRefresh()
@@ -397,6 +381,16 @@ h2 {
   margin-bottom: 16px;
   border: 1px solid #fecaca;
   font-size: 13px;
+}
+.action-log {
+  color: #4f46e5;
+  background: #eef2ff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #c7d2fe;
+  font-size: 12px;
+  font-family: monospace;
 }
 .sub-label {
   color: #94a3b8;

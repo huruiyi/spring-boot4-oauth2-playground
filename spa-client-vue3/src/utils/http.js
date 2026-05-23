@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useOAuth2Store } from '../stores/oauth2.js'
 
 const AUTH_SERVER = 'http://localhost:9000'
 const RESOURCE_SERVER = 'http://localhost:9001'
@@ -13,9 +14,9 @@ const resourceServerClient = axios.create({
 })
 
 resourceServerClient.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('access_token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+  const store = useOAuth2Store()
+  if (store.accessToken) {
+    config.headers.Authorization = `Bearer ${store.accessToken}`
   }
   return config
 })
@@ -24,11 +25,8 @@ resourceServerClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      sessionStorage.removeItem('access_token')
-      sessionStorage.removeItem('refresh_token')
-      sessionStorage.removeItem('id_token')
-      sessionStorage.removeItem('token_expires_at')
-      sessionStorage.removeItem('pkce_code_verifier')
+      const store = useOAuth2Store()
+      store.clear()
     }
     return Promise.reject(error)
   }
