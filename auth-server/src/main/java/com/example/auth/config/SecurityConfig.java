@@ -224,7 +224,7 @@ public class SecurityConfig {
             .requireProofKey(true)
             .build())
         .tokenSettings(TokenSettings.builder()
-            .accessTokenTimeToLive(Duration.ofHours(1))
+            .accessTokenTimeToLive(Duration.ofMinutes(3))
             .refreshTokenTimeToLive(Duration.ofDays(30))
             .reuseRefreshTokens(false)
             .build())
@@ -243,7 +243,7 @@ public class SecurityConfig {
             .requireAuthorizationConsent(false)
             .build())
         .tokenSettings(TokenSettings.builder()
-            .accessTokenTimeToLive(Duration.ofHours(1))
+            .accessTokenTimeToLive(Duration.ofMinutes(3))
             .build())
         .build();
 
@@ -269,7 +269,7 @@ public class SecurityConfig {
             .requireProofKey(true)
             .build())
         .tokenSettings(TokenSettings.builder()
-            .accessTokenTimeToLive(Duration.ofHours(1))
+            .accessTokenTimeToLive(Duration.ofMinutes(3))
             .refreshTokenTimeToLive(Duration.ofDays(30))
             .reuseRefreshTokens(false)
             .build())

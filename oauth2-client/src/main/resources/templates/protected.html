@@ -100,6 +100,10 @@
         }
         .status-ok { color: #16a34a; font-weight: 600; }
         .status-warn { color: #d97706; font-weight: 600; }
+        .countdown { font-size: 13px; font-weight: 600; margin-left: 8px; }
+        .countdown-ok { color: #16a34a; }
+        .countdown-warn { color: #d97706; }
+        .countdown-expired { color: #dc2626; }
     </style>
 </head>
 <body>
@@ -123,7 +127,7 @@
     <div class="content">
         <!-- Access Token -->
         <div class="card">
-            <h3>🎫 Access Token</h3>
+            <h3>🎫 Access Token <span id="token-countdown" class="countdown"></span></h3>
             <table class="meta-table">
                 <tr><td>Token Type</td><td th:text="${accessTokenTokenType}">Bearer</td></tr>
                 <tr><td>Issued At</td><td th:text="${accessTokenIssuedAt}">-</td></tr>
@@ -172,5 +176,33 @@
             <pre th:if="${messages}" th:text="${messages}">messages...</pre>
         </div>
     </div>
+
+    <script th:inline="javascript">
+        (function() {
+            var expiresAt = /*[[${accessTokenExpiresAt}]]*/ null;
+            if (!expiresAt) return;
+
+            var expiresMs = new Date(expiresAt).getTime();
+            var el = document.getElementById('token-countdown');
+
+            function update() {
+                var remaining = expiresMs - Date.now();
+                if (remaining <= 0) {
+                    el.textContent = '已过期';
+                    el.className = 'countdown countdown-expired';
+                    return;
+                }
+                var min = Math.floor(remaining / 60000);
+                var sec = Math.floor((remaining % 60000) / 1000);
+                el.textContent = '(' + min + '分' + sec + '秒)';
+                el.className = remaining < 60000
+                    ? 'countdown countdown-warn'
+                    : 'countdown countdown-ok';
+            }
+
+            update();
+            setInterval(update, 1000);
+        })();
+    </script>
 </body>
 </html>
