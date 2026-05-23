@@ -44,6 +44,14 @@ public class HomeController {
     model.addAttribute("idTokenClaims", oAuth2User.getAttributes());
     model.addAttribute("accessToken", authorizedClient.getAccessToken().getTokenValue());
     model.addAttribute("accessTokenScopes", authorizedClient.getAccessToken().getScopes());
+    model.addAttribute("accessTokenIssuedAt", authorizedClient.getAccessToken().getIssuedAt());
+    model.addAttribute("accessTokenExpiresAt", authorizedClient.getAccessToken().getExpiresAt());
+    model.addAttribute("accessTokenTokenType", authorizedClient.getAccessToken().getTokenType().getValue());
+    model.addAttribute("hasRefreshToken", authorizedClient.getRefreshToken() != null);
+    if (authorizedClient.getRefreshToken() != null) {
+      model.addAttribute("refreshTokenIssuedAt", authorizedClient.getRefreshToken().getIssuedAt());
+      model.addAttribute("refreshTokenExpiresAt", authorizedClient.getRefreshToken().getExpiresAt());
+    }
 
     // 调用 Resource Server 获取用户信息
     try {

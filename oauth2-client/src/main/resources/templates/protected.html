@@ -80,6 +80,26 @@
             margin: 2px 4px 2px 0;
             font-weight: 500;
         }
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+        .meta-table td {
+            padding: 6px 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .meta-table td:first-child {
+            color: #888;
+            font-weight: 500;
+            width: 140px;
+        }
+        .meta-table td:last-child {
+            color: #333;
+        }
+        .status-ok { color: #16a34a; font-weight: 600; }
+        .status-warn { color: #d97706; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -104,9 +124,20 @@
         <!-- Access Token -->
         <div class="card">
             <h3>🎫 Access Token</h3>
-            <p style="margin-bottom:10px;color:#666;font-size:13px;">Scopes:
-                <span class="tag" th:each="scope : ${accessTokenScopes}" th:text="${scope}">scope</span>
-            </p>
+            <table class="meta-table">
+                <tr><td>Token Type</td><td th:text="${accessTokenTokenType}">Bearer</td></tr>
+                <tr><td>Issued At</td><td th:text="${accessTokenIssuedAt}">-</td></tr>
+                <tr><td>Expires At</td><td th:text="${accessTokenExpiresAt}">-</td></tr>
+                <tr><td>Scopes</td><td>
+                    <span class="tag" th:each="scope : ${accessTokenScopes}" th:text="${scope}">scope</span>
+                </td></tr>
+                <tr><td>Refresh Token</td><td>
+                    <span th:if="${hasRefreshToken}" class="status-ok">Yes</span>
+                    <span th:unless="${hasRefreshToken}" class="status-warn">No</span>
+                </td></tr>
+                <tr th:if="${hasRefreshToken}"><td>Refresh Issued At</td><td th:text="${refreshTokenIssuedAt}">-</td></tr>
+                <tr th:if="${hasRefreshToken}"><td>Refresh Expires At</td><td th:text="${refreshTokenExpiresAt}">-</td></tr>
+            </table>
             <pre th:text="${accessToken}">token...</pre>
         </div>
 
