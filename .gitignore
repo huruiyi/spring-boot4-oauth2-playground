@@ -1,18 +1,49 @@
 # Maven
 target/
 
+# Gradle
+.gradle/
+build/
+
+# Java
+*.class
+*.jar
+*.war
+
 # IDE
 .idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
 
 # OS
 .DS_Store
 Thumbs.db
+ehthumbs.db
 
 # Logs
 *.log
 
+# Node / pnpm / npm
+node_modules/
+dist/
+.pnpm-store/
+pnpm-lock.yaml
+
 # Temp
 temp/
+*.tmp
+*.swp
+*~
 
-# Claude Code
+# Claude Code / CodeArts
 .claude/
+.codeartsdoer/
+.arts/
+
+# Env
+.env
+.env.local
+.env.*.local

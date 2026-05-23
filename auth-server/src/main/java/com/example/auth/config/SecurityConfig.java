@@ -165,7 +165,7 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of("http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:3000", "http://127.0.0.1:3000"));
+    config.setAllowedOrigins(List.of("http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"));
     config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
     config.setAllowCredentials(true);
@@ -200,6 +200,12 @@ public class SecurityConfig {
       jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existingSpaClient.getId());
       jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existingSpaClient.getId());
       jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingSpaClient.getId());
+    }
+    RegisteredClient existingSpaVue3Client = registeredClientRepository.findByClientId("spa-client-vue3");
+    if (existingSpaVue3Client != null) {
+      jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existingSpaVue3Client.getId());
+      jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existingSpaVue3Client.getId());
+      jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingSpaVue3Client.getId());
     }
 
     RegisteredClient webClient = RegisteredClient.withId(UUID.randomUUID().toString())
@@ -278,6 +284,33 @@ public class SecurityConfig {
 
     registeredClientRepository.save(spaClient);
 
+    RegisteredClient spaVue3Client = RegisteredClient.withId(UUID.randomUUID().toString())
+        .clientId("spa-client-vue3")
+        .clientName("SPA Client Vue3")
+        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+        .redirectUri("http://localhost:3001/callback")
+        .redirectUri("http://127.0.0.1:3001/callback")
+        .postLogoutRedirectUri("http://localhost:3001/")
+        .postLogoutRedirectUri("http://127.0.0.1:3001/")
+        .scope(OidcScopes.OPENID)
+        .scope(OidcScopes.PROFILE)
+        .scope("read")
+        .scope("write")
+        .clientSettings(ClientSettings.builder()
+            .requireAuthorizationConsent(false)
+            .requireProofKey(true)
+            .build())
+        .tokenSettings(TokenSettings.builder()
+            .accessTokenTimeToLive(Duration.ofHours(1))
+            .refreshTokenTimeToLive(Duration.ofDays(30))
+            .reuseRefreshTokens(false)
+            .build())
+        .build();
+
+    registeredClientRepository.save(spaVue3Client);
+
     this.registeredClientRepositoryRef = registeredClientRepository;
 
     return registeredClientRepository;
@@ -291,7 +324,7 @@ public class SecurityConfig {
       for (var row : rows) {
         log.info("DB 客户端: {}", row);
       }
-      for (String cid : java.util.List.of("oidc-client", "spa-client", "resource-server")) {
+      for (String cid : java.util.List.of("oidc-client", "spa-client", "spa-client-vue3", "resource-server")) {
         RegisteredClient c = repo.findByClientId(cid);
         log.info("Repository 查找 '{}': {}", cid, c != null ? "找到 - authMethods=" + c.getClientAuthenticationMethods() + ", redirectUris=" + c.getRedirectUris() : "未找到!");
       }
