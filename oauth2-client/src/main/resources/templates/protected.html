@@ -131,20 +131,29 @@
                 <tr><td>Scopes</td><td>
                     <span class="tag" th:each="scope : ${accessTokenScopes}" th:text="${scope}">scope</span>
                 </td></tr>
-                <tr><td>Refresh Token</td><td>
-                    <span th:if="${hasRefreshToken}" class="status-ok">Yes</span>
-                    <span th:unless="${hasRefreshToken}" class="status-warn">No</span>
-                </td></tr>
-                <tr th:if="${hasRefreshToken}"><td>Refresh Issued At</td><td th:text="${refreshTokenIssuedAt}">-</td></tr>
-                <tr th:if="${hasRefreshToken}"><td>Refresh Expires At</td><td th:text="${refreshTokenExpiresAt}">-</td></tr>
             </table>
             <pre th:text="${accessToken}">token...</pre>
         </div>
 
-        <!-- ID Token Claims -->
+        <!-- ID Token -->
         <div class="card">
-            <h3>📋 ID Token Claims</h3>
+            <h3>📋 ID Token</h3>
+            <div th:if="${idTokenValue}" style="margin-bottom:12px;">
+                <p style="color:#888;font-size:13px;margin-bottom:6px;font-weight:500;">Raw Token</p>
+                <pre th:text="${idTokenValue}">id_token...</pre>
+            </div>
+            <p style="color:#888;font-size:13px;margin-bottom:6px;font-weight:500;">Claims</p>
             <pre th:text="${idTokenClaims}">claims...</pre>
+        </div>
+
+        <!-- Refresh Token -->
+        <div class="card" th:if="${hasRefreshToken}">
+            <h3>🔄 Refresh Token</h3>
+            <table class="meta-table">
+                <tr><td>Issued At</td><td th:text="${refreshTokenIssuedAt}">-</td></tr>
+                <tr><td>Expires At</td><td th:text="${refreshTokenExpiresAt}">-</td></tr>
+            </table>
+            <pre th:text="${refreshTokenValue}">refresh_token...</pre>
         </div>
 
         <!-- Resource Server - User Info -->

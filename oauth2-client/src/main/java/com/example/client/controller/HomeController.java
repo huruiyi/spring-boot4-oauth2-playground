@@ -41,17 +41,26 @@ public class HomeController {
       username = oAuth2User.getName();
     }
     model.addAttribute("username", username);
-    model.addAttribute("idTokenClaims", oAuth2User.getAttributes());
+
+    // Access Token
     model.addAttribute("accessToken", authorizedClient.getAccessToken().getTokenValue());
     model.addAttribute("accessTokenScopes", authorizedClient.getAccessToken().getScopes());
     model.addAttribute("accessTokenIssuedAt", authorizedClient.getAccessToken().getIssuedAt());
     model.addAttribute("accessTokenExpiresAt", authorizedClient.getAccessToken().getExpiresAt());
     model.addAttribute("accessTokenTokenType", authorizedClient.getAccessToken().getTokenType().getValue());
+
+    // Refresh Token
     model.addAttribute("hasRefreshToken", authorizedClient.getRefreshToken() != null);
     if (authorizedClient.getRefreshToken() != null) {
+      model.addAttribute("refreshTokenValue", authorizedClient.getRefreshToken().getTokenValue());
       model.addAttribute("refreshTokenIssuedAt", authorizedClient.getRefreshToken().getIssuedAt());
       model.addAttribute("refreshTokenExpiresAt", authorizedClient.getRefreshToken().getExpiresAt());
     }
+
+    // ID Token
+    model.addAttribute("idTokenClaims", oAuth2User.getAttributes());
+    Object idTokenValue = oAuth2User.getAttribute("id_token");
+    model.addAttribute("idTokenValue", idTokenValue != null ? idTokenValue.toString() : "");
 
     // 调用 Resource Server 获取用户信息
     try {
