@@ -244,6 +244,18 @@ OAuth2 客户端应用：
 - 登录后自动获取 JWT Token
 - 通过 WebClient 调用 Resource Server API
 - 展示用户信息、Token Claims、受保护数据
+- Token Introspection（`POST /api/introspect`）：服务端用 oidc-client:secret Basic Auth 调 auth-server
+- Token Revocation（`POST /api/revoke-client`）：调 auth-server `/api/revoke` 吊销 token
+- API 未认证返回 401 JSON（而非 302 重定向），`exceptionHandling` + `RequestMatcher`
+
+#### 服务端与 SPA 的 Token Revocation 区别
+
+| 对比项 | SPA (spa-client / spa-client-vue3) | 服务端 (oauth2-client) |
+|--------|-----------------------------------|----------------------|
+| 吊销后本地清理 | `store.clear()` / `sessionStorage.removeItem()` | 可选移除 `OAuth2AuthorizedClientService` |
+| API 请求行为 | 无 Bearer token → 401 | `@RegisteredOAuth2AuthorizedClient` 自动重新授权获取新 token |
+| 不跳转时效果 | API 全部 401 | API 仍成功（自动获取新 token，展示服务端自动续期能力） |
+| 勾选跳转首页 | 清除 token + 跳转 | 移除授权客户端 + 跳转，需重新登录 |
 
 ### spa-client (端口 3000)
 

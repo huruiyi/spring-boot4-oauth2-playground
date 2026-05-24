@@ -124,6 +124,22 @@
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
+        .hint-bar { color: #64748b; background: #f8fafc; padding: 10px 16px; border-radius: 8px; margin-bottom: 12px; font-size: 12px; border: 1px solid #e2e8f0; line-height: 1.5; }
+        .section-label { color: #64748b; font-size: 12px; margin: 0 0 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+        .actions-row { margin-bottom: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .btn-introspect, .btn-revoke { padding: 5px 12px; border: 1px solid #e2e8f0; background: transparent; color: #64748b; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }
+        .btn-revoke { color: #d97706; border-color: #fed7aa; }
+        .btn-revoke:hover { background: #fffbeb; color: #b45309; border-color: #fdba74; }
+        .btn-introspect:hover { background: #f8fafc; color: #334155; }
+        .revoke-option { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #64748b; cursor: pointer; user-select: none; }
+        .revoke-option input { accent-color: #d97706; cursor: pointer; }
+        .token-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 8px; vertical-align: middle; }
+        .token-refreshed { background: #dcfce7; color: #16a34a; }
+        .token-same { background: #f1f5f9; color: #94a3b8; }
+        .code-block { border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6; margin-top: 8px; }
+        .code-header { background: #f1f3f5; padding: 6px 14px; font-size: 11px; color: #495057; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+        .code-body { background: #f8f9fa; color: #212529; padding: 12px 14px; margin: 0; font-size: 12px; white-space: pre-wrap; word-break: break-word; overflow: hidden; line-height: 1.6; font-family: ui-monospace, SFMono-Regular, monospace; }
+        .code-body.resp { max-height: none; }
     </style>
 </head>
 <body>
@@ -158,6 +174,7 @@
                 </td></tr>
             </table>
             <pre th:text="${accessToken}">token...</pre>
+            <input type="hidden" id="access-token-hidden" th:value="${accessToken}" />
         </div>
 
         <div class="card">
@@ -186,6 +203,7 @@
             <div class="card">
                 <h3>🌐 /api/user/info
                     <button class="api-btn" onclick="callApi('/api/user/info', 'userInfoResult')">请求</button>
+                    <span id="userInfoResult-status" class="token-status"></span>
                 </h3>
                 <div th:if="${userInfoError}" style="color:#e74c3c;font-size:13px;margin-bottom:10px;" th:text="${userInfoError}">Error</div>
                 <pre th:if="${userInfo}" th:text="${userInfo}">user info...</pre>
@@ -195,25 +213,76 @@
             <div class="card">
                 <h3>💬 /api/user/messages
                     <button class="api-btn" onclick="callApi('/api/user/messages', 'userMessagesResult')">请求</button>
+                    <span id="userMessagesResult-status" class="token-status"></span>
                 </h3>
                 <div th:if="${messagesError}" style="color:#e74c3c;font-size:13px;margin-bottom:10px;" th:text="${messagesError}">Error</div>
                 <pre th:if="${messages}" th:text="${messages}">messages...</pre>
                 <pre id="userMessagesResult" style="display:none;"></pre>
             </div>
         </div>
+
+        <!-- Token Introspection & Revocation -->
+        <div class="card">
+            <h3>🔍 Token Introspection & Revocation</h3>
+            <div class="hint-bar">Introspection: 服务端通过 oidc-client:secret Basic Auth 调 /oauth2/introspect；Revocation: 调自定义 /api/revoke 端点吊销 token。<br><strong>服务端与 SPA 的区别</strong>：SPA 吊销后清除本地 token，API 无 Bearer → 401；服务端吊销后不移除授权客户端时，<code>@RegisteredOAuth2AuthorizedClient</code> 会自动重新授权获取新 token，API 仍成功（展示服务端自动续期能力）。勾选"吊销后跳转首页"则移除授权客户端并跳转，需重新登录。<br>注意：JWT 是无状态的，吊销不会立即使 resource-server 拒绝请求。</div>
+            <div class="api-grid">
+                <div>
+                    <p class="section-label">Introspection</p>
+                    <div class="actions-row">
+                        <button class="btn-introspect" onclick="doIntrospect('access_token')">Introspect Access Token</button>
+                    </div>
+                    <div class="code-block">
+                        <div class="code-header">/oauth2/introspect</div>
+                        <pre class="code-body resp" id="introspect-result">点击 Introspect 按钮</pre>
+                    </div>
+                </div>
+                <div>
+                    <p class="section-label">Revocation</p>
+                    <div class="actions-row">
+                        <button class="btn-revoke" onclick="doRevoke('access_token')">Revoke Access Token</button>
+                        <label class="revoke-option"><input type="checkbox" id="revoke-redirect" checked /> 吊销后跳转首页</label>
+                    </div>
+                    <div class="code-block">
+                        <div class="code-header">/api/revoke</div>
+                        <pre class="code-body resp" id="revoke-result">点击 Revoke 按钮</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
+        var pageToken = document.getElementById('access-token-hidden') ? document.getElementById('access-token-hidden').value : '';
+
         function callApi(url, resultId) {
             var el = document.getElementById(resultId);
             var btn = event.target;
+            var statusId = resultId + '-status';
             btn.disabled = true;
             btn.textContent = '请求中...';
             el.style.display = 'block';
             el.textContent = '请求中...';
+            var statusEl = document.getElementById(statusId);
+            if (statusEl) statusEl.textContent = '';
             fetch(url)
-                .then(function(r) { return r.json(); })
+                .then(function(r) {
+                    if (r.status === 401) throw new Error('401: 未认证，请重新登录');
+                    return r.json();
+                })
                 .then(function(data) {
+                    var currentToken = data.currentAccessToken || '';
+                    if (currentToken && pageToken) {
+                        var refreshed = currentToken !== pageToken;
+                        if (statusEl) {
+                            if (refreshed) {
+                                statusEl.textContent = 'Token 已自动刷新';
+                                statusEl.className = 'token-status token-refreshed';
+                            } else {
+                                statusEl.textContent = 'Token 未变化';
+                                statusEl.className = 'token-status token-same';
+                            }
+                        }
+                    }
                     el.textContent = JSON.stringify(data, null, 2);
                     btn.disabled = false;
                     btn.textContent = '请求';
@@ -223,6 +292,49 @@
                     btn.disabled = false;
                     btn.textContent = '请求';
                 });
+        }
+
+        function getAccessToken() {
+            var el = document.querySelector('pre[th\\:text*=\'accessToken\']');
+            return el ? el.textContent : '';
+        }
+
+        function doIntrospect(tokenTypeHint) {
+            var tokenEl = document.getElementById('access-token-hidden');
+            var token = tokenEl ? tokenEl.value : '';
+            if (!token) { document.getElementById('introspect-result').textContent = '无 access_token'; return; }
+            var el = document.getElementById('introspect-result');
+            el.textContent = '请求中...';
+            fetch('/api/introspect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token, token_type_hint: tokenTypeHint })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) { el.textContent = JSON.stringify(data, null, 2); })
+            .catch(function(e) { el.textContent = '失败: ' + e.message; });
+        }
+
+        function doRevoke(tokenTypeHint) {
+            var tokenEl = document.getElementById('access-token-hidden');
+            var token = tokenEl ? tokenEl.value : '';
+            if (!token) { document.getElementById('revoke-result').textContent = '无 access_token'; return; }
+            var el = document.getElementById('revoke-result');
+            var removeClient = document.getElementById('revoke-redirect').checked;
+            el.textContent = '请求中...';
+            fetch('/api/revoke-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token, token_type_hint: tokenTypeHint, removeClient: removeClient })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                el.textContent = JSON.stringify(data, null, 2);
+                if (data.status === 'revoked' && document.getElementById('revoke-redirect').checked) {
+                    window.location.href = '/';
+                }
+            })
+            .catch(function(e) { el.textContent = '失败: ' + e.message; });
         }
     </script>
 

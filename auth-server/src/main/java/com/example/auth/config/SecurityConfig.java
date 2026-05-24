@@ -191,30 +191,10 @@ public class SecurityConfig {
   public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
     JdbcRegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
 
-    RegisteredClient existingWebClient = registeredClientRepository.findByClientId("oidc-client");
-    if (existingWebClient != null) {
-      jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existingWebClient.getId());
-      jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existingWebClient.getId());
-      jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingWebClient.getId());
-    }
-    RegisteredClient existingResourceServerClient = registeredClientRepository.findByClientId("resource-server");
-    if (existingResourceServerClient != null) {
-      jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existingResourceServerClient.getId());
-      jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existingResourceServerClient.getId());
-      jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingResourceServerClient.getId());
-    }
-    RegisteredClient existingSpaClient = registeredClientRepository.findByClientId("spa-client");
-    if (existingSpaClient != null) {
-      jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existingSpaClient.getId());
-      jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existingSpaClient.getId());
-      jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingSpaClient.getId());
-    }
-    RegisteredClient existingSpaVue3Client = registeredClientRepository.findByClientId("spa-client-vue3");
-    if (existingSpaVue3Client != null) {
-      jdbcTemplate.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", existingSpaVue3Client.getId());
-      jdbcTemplate.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", existingSpaVue3Client.getId());
-      jdbcTemplate.update("DELETE FROM oauth2_registered_client WHERE id = ?", existingSpaVue3Client.getId());
-    }
+    deleteClientIfExists(registeredClientRepository, jdbcTemplate, "oidc-client");
+    deleteClientIfExists(registeredClientRepository, jdbcTemplate, "resource-server");
+    deleteClientIfExists(registeredClientRepository, jdbcTemplate, "spa-client");
+    deleteClientIfExists(registeredClientRepository, jdbcTemplate, "spa-client-vue3");
 
     RegisteredClient webClient = RegisteredClient.withId(UUID.randomUUID().toString())
         .clientId("oidc-client")
@@ -244,6 +224,7 @@ public class SecurityConfig {
             .reuseRefreshTokens(false)
             .build())
         .build();
+    registeredClientRepository.save(webClient);
 
     RegisteredClient resourceServerClient = RegisteredClient.withId(UUID.randomUUID().toString())
         .clientId("resource-server")
@@ -261,8 +242,6 @@ public class SecurityConfig {
             .accessTokenTimeToLive(Duration.ofMinutes(3))
             .build())
         .build();
-
-    registeredClientRepository.save(webClient);
     registeredClientRepository.save(resourceServerClient);
 
     RegisteredClient spaClient = RegisteredClient.withId(UUID.randomUUID().toString())
@@ -442,6 +421,16 @@ public class SecurityConfig {
     return AuthorizationServerSettings.builder()
         .issuer("http://localhost:9000")
         .build();
+  }
+
+  private static void deleteClientIfExists(RegisteredClientRepository repo, JdbcTemplate jdbc, String clientId) {
+    RegisteredClient existing = repo.findByClientId(clientId);
+    if (existing != null) {
+      String id = existing.getId();
+      jdbc.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", id);
+      jdbc.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", id);
+      jdbc.update("DELETE FROM oauth2_registered_client WHERE id = ?", id);
+    }
   }
 
   private static String getClientIp(HttpServletRequest request) {

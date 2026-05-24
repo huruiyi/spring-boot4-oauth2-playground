@@ -14,7 +14,10 @@ import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizedCli
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -23,7 +26,10 @@ public class SecurityConfig {
   private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
   @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity http, ClientRegistrationRepository clientRegistrationRepository) {
+  public SecurityFilterChain securityFilterChain(HttpSecurity http,
+      ClientRegistrationRepository clientRegistrationRepository) {
+    RequestMatcher apiMatcher = request -> request.getRequestURI().startsWith("/api/");
+
     http
         .authorizeHttpRequests(authorize -> authorize
             .requestMatchers("/", "/public/**", "/css/**", "/js/**", "/oauth2/authorization/**").permitAll()
@@ -52,6 +58,19 @@ public class SecurityConfig {
             .deleteCookies("OAUTH2_CLIENT_SESSION")
             .logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository))
             .logoutSuccessUrl("/")
+        )
+        .csrf(csrf -> csrf
+            .ignoringRequestMatchers("/api/introspect", "/api/revoke-client")
+        )
+        .exceptionHandling(exceptions -> exceptions
+            .defaultAuthenticationEntryPointFor(
+                (request, response, authException) -> {
+                  response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                  response.setContentType("application/json;charset=UTF-8");
+                  response.getWriter().write("{\"error\":\"unauthorized\",\"message\":\"请重新登录\"}");
+                },
+                apiMatcher
+            )
         );
 
     return http.build();
