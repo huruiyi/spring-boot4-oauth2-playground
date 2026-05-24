@@ -7,75 +7,249 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
-    .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
-    h1 { font-size: 24px; margin-bottom: 20px; }
-    h2 { font-size: 18px; margin: 20px 0 10px; color: #555; }
-    .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .btn { display: inline-block; padding: 10px 24px; background: #4f46e5; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; text-decoration: none; }
-    .btn:hover { background: #4338ca; }
-    .btn-danger { background: #dc2626; }
-    .btn-danger:hover { background: #b91c1c; }
-    .btn-success { background: #16a34a; }
-    .btn-success:hover { background: #15803d; }
-    pre { background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; max-height: 300px; overflow-y: auto; }
-    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-    .info-label { font-weight: 600; color: #555; }
-    .hidden { display: none; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #e0e7ff; color: #4f46e5; }
-    .error { color: #dc2626; background: #fef2f2; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+
+    .profile { max-width: 920px; margin: 32px auto; padding: 0 20px; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    h1 { font-size: 22px; margin: 0; color: #1e293b; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; background: #e0e7ff; color: #4f46e5; vertical-align: middle; font-weight: 600; letter-spacing: .3px; }
+
+    .hint-bar { color: #64748b; background: #f8fafc; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 12px; border: 1px solid #e2e8f0; line-height: 1.5; }
+
+    .alert { padding: 10px 16px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; line-height: 1.5; display: none; }
+    .alert.visible { display: block; }
+    .alert-error { color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; }
+    .alert-info { color: #4f46e5; background: #eef2ff; border: 1px solid #c7d2fe; font-size: 12px; font-family: ui-monospace, monospace; }
+
+    .card { background: #fff; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid #f1f5f9; }
+
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9; }
+    .card-title { font-size: 15px; font-weight: 600; color: #334155; display: flex; align-items: center; gap: 6px; }
+    .card-icon { font-size: 17px; }
+
+    .info-table { margin-bottom: 4px; }
+    .info-row { display: flex; align-items: center; padding: 0; border-radius: 6px; margin-bottom: 2px; font-size: 13px; }
+    .info-row.highlight { background: #fffbeb; }
+    .info-label { font-weight: 600; color: #94a3b8; min-width: 120px; flex-shrink: 0; padding: 8px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+    .info-value { color: #1e293b; padding: 8px 12px; flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; font-weight: 500; }
+    .scopes { justify-content: flex-end; }
+
+    .mono { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12.5px; font-weight: 400; }
+    .mono-sm { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11.5px; font-weight: 400; word-break: break-all; }
+
+    .scope-tag { display: inline-block; padding: 2px 10px; background: #eef2ff; color: #4f46e5; border-radius: 10px; font-size: 11px; font-weight: 600; border: 1px solid #c7d2fe; }
+
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+    .dot-green { background: #22c55e; box-shadow: 0 0 4px rgba(34,197,94,.4); }
+    .dot-amber { background: #f59e0b; box-shadow: 0 0 4px rgba(245,158,11,.4); }
+    .dot-gray { background: #cbd5e1; }
+
+    .meta { margin-left: 6px; font-weight: 400; font-size: 12px; }
+
+    .text-warn { color: #d97706; font-weight: 600; }
+    .text-danger { color: #dc2626; font-weight: 600; }
+    .text-ok { color: #16a34a; font-weight: 600; }
+    .text-muted { color: #94a3b8; }
+
+    .cd-ok { color: #16a34a; font-weight: 700; font-size: 14px; }
+    .cd-warn { color: #d97706; font-weight: 700; font-size: 14px; }
+    .cd-expired { color: #dc2626; font-weight: 700; font-size: 14px; }
+
+    .section-label { color: #64748b; font-size: 12px; margin: 16px 0 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+
+    .actions { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .btn { display: inline-flex; align-items: center; padding: 7px 18px; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; gap: 4px; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: #4f46e5; }
+    .btn-primary:hover:not(:disabled) { background: #4338ca; }
+    .btn-outline { background: transparent; color: #64748b; border: 1px solid #e2e8f0; }
+    .btn-outline:hover:not(:disabled) { background: #f8fafc; color: #334155; }
+    .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #e2e8f0; }
+    .btn-ghost:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-warn { color: #d97706; border-color: #fed7aa; }
+    .btn-warn:hover:not(:disabled) { background: #fffbeb; color: #b45309; border-color: #fdba74; }
+
+    .revoke-option { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #64748b; cursor: pointer; user-select: none; margin-left: 4px; }
+    .revoke-option input { accent-color: #d97706; cursor: pointer; }
+
+    .code-block { border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6; margin-top: 12px; }
+    .code-header { background: #f1f3f5; padding: 6px 14px; font-size: 11px; color: #495057; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .code-body { background: #f8f9fa; color: #212529; padding: 12px 14px; margin: 0; overflow: auto; font-size: 12px; max-height: 200px; word-break: break-all; white-space: pre-wrap; line-height: 1.6; font-family: ui-monospace, SFMono-Regular, monospace; }
+    .code-body.resp { max-height: none; color: #212529; white-space: pre-wrap; word-break: break-word; overflow: hidden; }
+
+    .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .api-btn { padding: 5px 14px; background: #4f46e5; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }
+    .api-btn:hover { background: #4338ca; }
+
+    .hidden { display: none !important; }
+
+    /* Home page */
+    .home { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    .home h1 { font-size: 24px; margin-bottom: 20px; }
+    .home h2 { font-size: 18px; margin: 0 0 12px; color: #555; }
+    .home .desc { margin: 0 0 12px; color: #666; line-height: 1.6; }
+    .home .steps { padding-left: 20px; line-height: 1.8; color: #555; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>SPA Client <span class="badge">PKCE</span></h1>
 
-    <div id="error-msg" class="error hidden"></div>
+<!-- 首页 -->
+<div id="home-page" class="home">
+  <h1>SPA Client <span class="badge">PKCE</span></h1>
+  <div class="card">
+    <h2>OAuth2 授权码 + PKCE 流程</h2>
+    <p class="desc">
+      此 SPA 应用使用公共客户端（client_id: <code>spa-client</code>），无 client_secret。<br>
+      通过 PKCE (Proof Key for Code Exchange) 保护授权码流程的安全性。
+    </p>
+    <button class="btn btn-primary" onclick="OAuth2PKCE.startAuthorization()">登录</button>
+  </div>
+  <div class="card">
+    <h2>PKCE 流程说明</h2>
+    <ol class="steps">
+      <li>客户端生成随机 <code>code_verifier</code></li>
+      <li>计算 <code>code_challenge = SHA-256(code_verifier)</code></li>
+      <li>授权请求携带 <code>code_challenge</code></li>
+      <li>令牌请求携带原始 <code>code_verifier</code></li>
+      <li>授权服务器验证哈希匹配，签发令牌</li>
+    </ol>
+  </div>
+</div>
 
-    <!-- 未登录状态 -->
-    <div id="login-section">
-      <div class="card">
-        <h2>OAuth2 授权码 + PKCE 流程</h2>
-        <p style="margin: 12px 0; color: #666;">
-          此 SPA 应用使用公共客户端（client_id: <code>spa-client</code>），无 client_secret。<br>
-          通过 PKCE (Proof Key for Code Exchange) 保护授权码流程的安全性。
-        </p>
-        <button class="btn" onclick="login()">登录</button>
+<!-- 测试页（已登录） -->
+<div id="profile-page" class="profile hidden">
+
+  <div class="top-bar">
+    <h1>测试页 <span class="badge">公共客户端 (PKCE)</span></h1>
+    <button class="btn btn-ghost" onclick="doLogout()">登出</button>
+  </div>
+
+  <div class="hint-bar">优先使用 refresh_token 续期，无 refresh_token 时 fallback 到 Silent Refresh (iframe prompt=none)</div>
+
+  <div id="error-alert" class="alert alert-error"></div>
+  <div id="action-alert" class="alert alert-info"></div>
+
+  <!-- Access Token -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-icon">🎫</span> Access Token</div>
+      <span id="countdown"></span>
+    </div>
+    <div class="info-table">
+      <div class="info-row">
+        <div class="info-label">Token Type</div>
+        <div class="info-value"><span class="mono">Bearer</span></div>
       </div>
-      <div class="card">
-        <h2>PKCE 流程说明</h2>
-        <ol style="padding-left: 20px; line-height: 1.8; color: #555;">
-          <li>客户端生成随机 <code>code_verifier</code></li>
-          <li>计算 <code>code_challenge = SHA-256(code_verifier)</code></li>
-          <li>授权请求携带 <code>code_challenge</code></li>
-          <li>令牌请求携带原始 <code>code_verifier</code></li>
-          <li>授权服务器验证哈希匹配，签发令牌</li>
-        </ol>
+      <div class="info-row">
+        <div class="info-label">Issued At</div>
+        <div class="info-value mono" id="issued-at">-</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Expires At</div>
+        <div class="info-value mono" id="token-expiry">-</div>
+      </div>
+      <div class="info-row highlight">
+        <div class="info-label">即将过期</div>
+        <div class="info-value" id="expires-soon">-</div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Scopes</div>
+        <div class="info-value scopes" id="scopes-row"></div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Refresh Token</div>
+        <div class="info-value" id="refresh-token-row"></div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">自动续期</div>
+        <div class="info-value" id="auto-refresh-row"></div>
       </div>
     </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-refresh" onclick="doRefresh()">🔄 手动续期</button>
+      <button class="btn btn-outline" id="btn-toggle-auto" onclick="toggleAutoRefresh()">关闭自动续期</button>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span>access_token</span></div>
+      <pre class="code-body" id="access-token-display"></pre>
+    </div>
+  </div>
 
-    <!-- 已登录状态 -->
-    <div id="authenticated-section" class="hidden">
-      <div class="card">
-        <h2>用户信息</h2>
-        <div id="user-info"></div>
+  <!-- ID Token -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-icon">📋</span> ID Token</div>
+    </div>
+    <div class="info-table">
+      <div class="info-row">
+        <div class="info-label">Issued At</div>
+        <div class="info-value mono" id="id-issued-at">-</div>
       </div>
-      <div class="card">
-        <h2>Access Token</h2>
-        <pre id="access-token"></pre>
-        <button class="btn btn-success" onclick="callResourceServer()" style="margin-top: 12px;">调用 Resource Server</button>
-        <button class="btn btn-danger" onclick="logout()" style="margin-top: 12px;">登出</button>
-        <p style="margin-top: 12px; color: #666; font-size: 12px;">
-          <strong>注意</strong>：SPA 作为公共客户端不持有刷新令牌，Token 过期后请重新登录。
-        </p>
+      <div class="info-row">
+        <div class="info-label">Expires At</div>
+        <div class="info-value mono" id="id-expires-at">-</div>
       </div>
-      <div class="card">
-        <h2>Resource Server 响应</h2>
-        <pre id="resource-response">点击上方按钮调用 API</pre>
+    </div>
+    <div class="section-label">Claims</div>
+    <div class="info-table" id="claims-table"></div>
+  </div>
+
+  <!-- API -->
+  <div class="api-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-icon">🌐</span> /api/user/info</div>
+        <button class="api-btn" onclick="callApi('/api/user/info')">请求</button>
+      </div>
+      <div class="code-block">
+        <pre class="code-body resp" id="user-info-resp">点击请求按钮</pre>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-icon">💬</span> /api/user/messages</div>
+        <button class="api-btn" onclick="callApi('/api/user/messages')">请求</button>
+      </div>
+      <div class="code-block">
+        <pre class="code-body resp" id="messages-resp">点击请求按钮</pre>
       </div>
     </div>
   </div>
 
-  <script src="js/oauth2-pkce.js"></script>
-  <script src="js/app.js"></script>
+  <!-- Token Introspection / Revocation -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-icon">🔍</span> Token Introspection & Revocation</div>
+    </div>
+    <div class="hint-bar" style="margin-bottom:12px">Introspection 通过 /oauth2/introspect (oidc-client Basic Auth)；Revocation 通过自定义 /api/revoke 端点直接操作 OAuth2AuthorizationService 吊销 token。<br>注意：JWT 是无状态的，吊销不会立即使 resource-server 拒绝，需本地清除 token。</div>
+    <div class="api-grid" style="grid-template-columns: 1fr 1fr">
+      <div>
+        <div class="section-label">Introspection</div>
+        <div class="actions" style="margin-top:0;margin-bottom:8px">
+          <button class="btn btn-outline btn-sm" onclick="doIntrospect('access_token')">Introspect Access Token</button>
+        </div>
+        <div class="code-block">
+          <div class="code-header"><span>/oauth2/introspect</span></div>
+          <pre class="code-body resp" id="introspect-result">点击 Introspect 按钮</pre>
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Revocation</div>
+        <div class="actions" style="margin-top:0;margin-bottom:8px">
+          <button class="btn btn-outline btn-sm btn-warn" onclick="doRevoke('access_token')">Revoke Access Token</button>
+          <label class="revoke-option"><input type="checkbox" id="revoke-redirect" checked /> 吊销后跳转首页</label>
+        </div>
+        <div class="code-block">
+          <div class="code-header"><span>/api/revoke</span></div>
+          <pre class="code-body resp" id="revoke-result">点击 Revoke 按钮</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/oauth2-pkce.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

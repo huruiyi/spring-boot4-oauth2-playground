@@ -142,6 +142,7 @@
           <div class="section-label">Revocation</div>
           <div class="actions" style="margin-top:0;margin-bottom:8px">
             <button class="btn btn-outline btn-sm btn-warn" @click="doRevoke('access_token')">Revoke Access Token</button>
+            <label class="revoke-option"><input type="checkbox" v-model="revokeRedirectHome" /> 吊销后跳转首页</label>
           </div>
           <div class="code-block">
             <div class="code-header"><span>/api/revoke</span></div>
@@ -177,6 +178,7 @@ const messagesResponse = ref('点击请求按钮')
 const lastAction = ref('')
 const introspectResult = ref('点击 Introspect 按钮')
 const revokeResult = ref('点击 Revoke 按钮')
+const revokeRedirectHome = ref(true)
 
 let countdownTimer = null
 let refreshTimer = null
@@ -355,9 +357,15 @@ async function doRevoke(tokenTypeHint) {
   revokeResult.value = '请求中...'
   try {
     await oauth2.revokeToken(token, tokenTypeHint)
-    revokeResult.value = `✓ ${tokenTypeHint} 已吊销\n(HTTP 200, 无响应体)\n\nJWT 是无状态的，吊销不会立即使 resource-server 拒绝请求。\n已清除本地 token，请重新登录。`
+    revokeResult.value = `✓ ${tokenTypeHint} 已吊销\n(HTTP 200, 无响应体)\n\nJWT 是无状态的，吊销不会立即使 resource-server 拒绝请求。`
+    stopCountdown()
+    stopAutoRefresh()
     store.clear()
-    updateTokenStatus()
+    if (revokeRedirectHome.value) {
+      window.location.href = '/'
+    } else {
+      revokeResult.value += '\n已清除本地 token，请重新登录。'
+    }
   } catch (e) {
     revokeResult.value = '失败: ' + e.message
   }
@@ -438,6 +446,9 @@ h1 { font-size: 22px; margin: 0; color: #1e293b; }
 .btn-sm { padding: 5px 12px; font-size: 12px; }
 .btn-warn { color: #d97706; border-color: #fed7aa; }
 .btn-warn:hover:not(:disabled) { background: #fffbeb; color: #b45309; border-color: #fdba74; }
+
+.revoke-option { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #64748b; cursor: pointer; user-select: none; margin-left: 4px; }
+.revoke-option input { accent-color: #d97706; cursor: pointer; }
 
 .code-block { border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6; margin-top: 12px; }
 .code-header { background: #f1f3f5; padding: 6px 14px; font-size: 11px; color: #495057; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
