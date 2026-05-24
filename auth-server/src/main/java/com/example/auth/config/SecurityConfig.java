@@ -20,6 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -70,6 +71,17 @@ public class SecurityConfig {
   // ==================== Security Filter Chains ====================
 
   @Bean
+  @Order(0)
+  public SecurityFilterChain apiRevokeSecurityFilterChain(HttpSecurity http) throws Exception {
+    http
+        .securityMatcher("/api/revoke")
+        .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
+        .csrf(csrf -> csrf.ignoringRequestMatchers("/api/revoke"))
+        .cors(Customizer.withDefaults());
+    return http.build();
+  }
+
+  @Bean
   @Order(1)
   public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) {
     http
@@ -85,6 +97,7 @@ public class SecurityConfig {
               .tokenRevocationEndpoint(Customizer.withDefaults());
         })
         .authorizeHttpRequests(authorize -> authorize
+            .requestMatchers("/oauth2/introspect", "/oauth2/revoke").permitAll()
             .anyRequest().authenticated()
         )
         .csrf(csrf -> csrf
@@ -140,7 +153,7 @@ public class SecurityConfig {
         .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
         .contentSecurityPolicy(csp -> csp.policyDirectives(
             "default-src 'self'; style-src 'self'; frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001 http://localhost:4173 http://127.0.0.1:4173;"))
-        .frameOptions(frame -> frame.sameOrigin())
+        .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
     );
 
     return http.build();

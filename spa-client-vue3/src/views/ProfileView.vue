@@ -120,6 +120,36 @@
         </div>
       </div>
     </div>
+
+    <!-- Token Introspection / Revocation -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-icon">🔍</span> Token Introspection & Revocation</div>
+      </div>
+      <div class="hint-bar" style="margin-bottom:12px">Introspection 通过 /oauth2/introspect (oidc-client Basic Auth)；Revocation 通过自定义 /api/revoke 端点直接操作 OAuth2AuthorizationService 吊销 token。<br>注意：JWT 是无状态的，吊销不会立即使 resource-server 拒绝，需本地清除 token。</div>
+      <div class="api-grid" style="grid-template-columns: 1fr 1fr">
+        <div>
+          <div class="section-label">Introspection</div>
+          <div class="actions" style="margin-top:0;margin-bottom:8px">
+            <button class="btn btn-outline btn-sm" @click="doIntrospect('access_token')">Introspect Access Token</button>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span>/oauth2/introspect</span></div>
+            <pre class="code-body resp">{{ introspectResult }}</pre>
+          </div>
+        </div>
+        <div>
+          <div class="section-label">Revocation</div>
+          <div class="actions" style="margin-top:0;margin-bottom:8px">
+            <button class="btn btn-outline btn-sm btn-warn" @click="doRevoke('access_token')">Revoke Access Token</button>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span>/api/revoke</span></div>
+            <pre class="code-body resp">{{ revokeResult }}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -145,6 +175,8 @@ const idTokenExpiresAt = ref('-')
 const userInfoResponse = ref('点击请求按钮')
 const messagesResponse = ref('点击请求按钮')
 const lastAction = ref('')
+const introspectResult = ref('点击 Introspect 按钮')
+const revokeResult = ref('点击 Revoke 按钮')
 
 let countdownTimer = null
 let refreshTimer = null
@@ -299,6 +331,38 @@ async function callApi(endpoint) {
   }
 }
 
+async function doIntrospect(tokenTypeHint) {
+  const token = tokenTypeHint === 'refresh_token' ? store.refreshToken : store.accessToken
+  if (!token) {
+    introspectResult.value = `无 ${tokenTypeHint}`
+    return
+  }
+  introspectResult.value = '请求中...'
+  try {
+    const data = await oauth2.introspectToken(token, tokenTypeHint)
+    introspectResult.value = JSON.stringify(data, null, 2)
+  } catch (e) {
+    introspectResult.value = '失败: ' + e.message
+  }
+}
+
+async function doRevoke(tokenTypeHint) {
+  const token = tokenTypeHint === 'refresh_token' ? store.refreshToken : store.accessToken
+  if (!token) {
+    revokeResult.value = `无 ${tokenTypeHint}`
+    return
+  }
+  revokeResult.value = '请求中...'
+  try {
+    await oauth2.revokeToken(token, tokenTypeHint)
+    revokeResult.value = `✓ ${tokenTypeHint} 已吊销\n(HTTP 200, 无响应体)\n\nJWT 是无状态的，吊销不会立即使 resource-server 拒绝请求。\n已清除本地 token，请重新登录。`
+    store.clear()
+    updateTokenStatus()
+  } catch (e) {
+    revokeResult.value = '失败: ' + e.message
+  }
+}
+
 onMounted(() => {
   store.restore()
   updateTokenStatus()
@@ -371,6 +435,9 @@ h1 { font-size: 22px; margin: 0; color: #1e293b; }
 .btn-outline:hover:not(:disabled) { background: #f8fafc; color: #334155; }
 .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #e2e8f0; }
 .btn-ghost:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-warn { color: #d97706; border-color: #fed7aa; }
+.btn-warn:hover:not(:disabled) { background: #fffbeb; color: #b45309; border-color: #fdba74; }
 
 .code-block { border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6; margin-top: 12px; }
 .code-header { background: #f1f3f5; padding: 6px 14px; font-size: 11px; color: #495057; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }

@@ -1,10 +1,13 @@
 import { generateRandomString, sha256, parseJwt } from './crypto.js'
+import axios from 'axios'
 import { authServerClient, resourceServerClient, AUTH_SERVER, RESOURCE_SERVER } from './http.js'
 import { useOAuth2Store } from '../stores/oauth2.js'
 
 const CLIENT_ID = 'spa-client-vue3'
 const REDIRECT_URI = `${window.location.origin}/callback`
 const SCOPES = 'openid profile read write'
+const INTROSPECT_CLIENT_ID = 'oidc-client'
+const INTROSPECT_CLIENT_SECRET = 'secret'
 
 async function startAuthorization() {
   const codeVerifier = generateRandomString(32)
@@ -151,6 +154,39 @@ function startSilentRefresh() {
   })
 }
 
+async function introspectToken(token, tokenTypeHint) {
+  const basic = btoa(`${INTROSPECT_CLIENT_ID}:${INTROSPECT_CLIENT_SECRET}`)
+  const params = new URLSearchParams({ token })
+  if (tokenTypeHint) params.set('token_type_hint', tokenTypeHint)
+
+  try {
+    const { data } = await axios.post(`${AUTH_SERVER}/oauth2/introspect`, params.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${basic}`
+      }
+    })
+    return data
+  } catch (e) {
+    const desc = e.response?.data?.error_description || e.response?.data?.error || 'Introspection 失败'
+    throw new Error(desc)
+  }
+}
+
+async function revokeToken(token, tokenTypeHint) {
+  const body = { token }
+  if (tokenTypeHint) body.token_type_hint = tokenTypeHint
+
+  try {
+    await axios.post(`${AUTH_SERVER}/api/revoke`, body, {
+      headers: { 'Content-Type': 'application/json' }
+    })
+  } catch (e) {
+    const desc = e.response?.data?.error_description || e.response?.data?.error || 'Revocation 失败'
+    throw new Error(desc)
+  }
+}
+
 export default {
   startAuthorization,
   exchangeCode,
@@ -159,6 +195,8 @@ export default {
   parseJwt,
   callResourceServer,
   startSilentRefresh,
+  introspectToken,
+  revokeToken,
   AUTH_SERVER,
   RESOURCE_SERVER
 }
