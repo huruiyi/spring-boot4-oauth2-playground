@@ -6,7 +6,7 @@
 
     <parent>
         <groupId>com.example</groupId>
-        <artifactId>sb4-auth</artifactId>
+        <artifactId>spring-boot4-oauth2-playground</artifactId>
         <version>1.0.0</version>
     </parent>
 

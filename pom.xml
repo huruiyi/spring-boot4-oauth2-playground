@@ -12,11 +12,11 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>sb4-auth</artifactId>
+    <artifactId>spring-boot4-oauth2-playground</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
-    <name>sb4-auth</name>
-    <description>Spring Boot 4 OAuth2 Authorization Server + Resource Server + Client</description>
+    <name>spring-boot4-oauth2-playground</name>
+    <description>Spring Boot 4 OAuth2 Playground - Authorization Server + Resource Server + Client + SPA</description>
 
     <modules>
         <module>auth-server</module>
