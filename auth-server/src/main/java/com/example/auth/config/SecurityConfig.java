@@ -1,6 +1,8 @@
 package com.example.auth.config;
 
 import com.example.auth.entity.User;
+import com.example.auth.filter.MfaAuthenticationFilter;
+import com.example.auth.handler.MfaAwareAuthenticationSuccessHandler;
 import com.example.auth.repository.UserRepository;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -10,10 +12,8 @@ import com.nimbusds.jose.proc.SecurityContext;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -23,21 +23,14 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
-import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
-import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
-import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
-import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
@@ -52,7 +45,6 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
@@ -122,7 +114,7 @@ public class SecurityConfig {
         .headers(headers -> headers
             .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
             .contentSecurityPolicy(csp -> csp.policyDirectives(
-                "default-src 'self'; style-src 'self'; frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001 http://localhost:4173 http://127.0.0.1:4173;"))
+                "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001 http://localhost:4173 http://127.0.0.1:4173;"))
         );
 
     return http.build();
@@ -130,29 +122,29 @@ public class SecurityConfig {
 
   @Bean
   @Order(2)
-  public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, 
+      MfaAuthenticationFilter mfaAuthenticationFilter,
+      MfaAwareAuthenticationSuccessHandler mfaAwareSuccessHandler) throws Exception {
     http.authorizeHttpRequests(authorize -> authorize
-        .requestMatchers("/login", "/oauth2/consent", "/css/**", "/js/**", "/error").permitAll()
+        .requestMatchers("/login", "/oauth2/consent", "/mfa/**", "/css/**", "/js/**", "/error").permitAll()
         .anyRequest().authenticated()
     );
     http.formLogin(form -> form
         .loginPage("/login")
         .permitAll()
-        .successHandler((request, response, authentication) -> {
-          log.info("用户 {} 登录成功（IP: {}）", authentication.getName(), getClientIp(request));
-          new org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler()
-              .onAuthenticationSuccess(request, response, authentication);
-        })
+        .successHandler(mfaAwareSuccessHandler)
         .failureHandler((request, response, exception) -> {
           log.warn("用户登录失败（IP: {}）: {}", getClientIp(request), exception.getMessage());
           response.sendRedirect("/login?error");
         })
     );
+    http.addFilterAfter(mfaAuthenticationFilter, 
+        org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
     http.cors(Customizer.withDefaults());
     http.headers(headers -> headers
         .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
         .contentSecurityPolicy(csp -> csp.policyDirectives(
-            "default-src 'self'; style-src 'self'; frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001 http://localhost:4173 http://127.0.0.1:4173;"))
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self' http://localhost:3000 http://127.0.0.1:3000 http://localhost:3001 http://127.0.0.1:3001 http://localhost:4173 http://127.0.0.1:4173;"))
         .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
     );
 
@@ -182,133 +174,6 @@ public class SecurityConfig {
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", config);
     return source;
-  }
-
-  // ==================== 客户端存储 ====================
-
-  @Bean
-  @Primary
-  public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
-    JdbcRegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
-
-    deleteClientIfExists(registeredClientRepository, jdbcTemplate, "oidc-client");
-    deleteClientIfExists(registeredClientRepository, jdbcTemplate, "resource-server");
-    deleteClientIfExists(registeredClientRepository, jdbcTemplate, "spa-client");
-    deleteClientIfExists(registeredClientRepository, jdbcTemplate, "spa-client-vue3");
-
-    RegisteredClient webClient = RegisteredClient.withId(UUID.randomUUID().toString())
-        .clientId("oidc-client")
-        .clientSecret(passwordEncoder.encode("secret"))
-        .clientName("Web Client")
-        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-        .redirectUri("http://localhost:8080/login/oauth2/code/my-client")
-        .redirectUri("http://127.0.0.1:8080/login/oauth2/code/my-client")
-        .redirectUri("http://localhost:8080/")
-        .redirectUri("http://127.0.0.1:8080/")
-        .postLogoutRedirectUri("http://localhost:8080/")
-        .postLogoutRedirectUri("http://127.0.0.1:8080/")
-        .scope(OidcScopes.OPENID)
-        .scope(OidcScopes.PROFILE)
-        .scope("read")
-        .scope("write")
-        .clientSettings(ClientSettings.builder()
-            .requireAuthorizationConsent(false)
-            .requireProofKey(true)
-            .build())
-        .tokenSettings(TokenSettings.builder()
-            .accessTokenTimeToLive(Duration.ofMinutes(3))
-            .refreshTokenTimeToLive(Duration.ofDays(30))
-            .reuseRefreshTokens(false)
-            .build())
-        .build();
-    registeredClientRepository.save(webClient);
-
-    RegisteredClient resourceServerClient = RegisteredClient.withId(UUID.randomUUID().toString())
-        .clientId("resource-server")
-        .clientSecret(passwordEncoder.encode("secret"))
-        .clientName("Resource Server")
-        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-        .scope("read")
-        .scope("write")
-        .scope("admin")
-        .clientSettings(ClientSettings.builder()
-            .requireAuthorizationConsent(false)
-            .build())
-        .tokenSettings(TokenSettings.builder()
-            .accessTokenTimeToLive(Duration.ofMinutes(3))
-            .build())
-        .build();
-    registeredClientRepository.save(resourceServerClient);
-
-    RegisteredClient spaClient = RegisteredClient.withId(UUID.randomUUID().toString())
-        .clientId("spa-client")
-        .clientName("SPA Client")
-        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-        .redirectUri("http://localhost:3000/callback.html")
-        .redirectUri("http://127.0.0.1:3000/callback.html")
-        .redirectUri("http://localhost:3000/silent-refresh.html")
-        .redirectUri("http://127.0.0.1:3000/silent-refresh.html")
-        .postLogoutRedirectUri("http://localhost:3000/")
-        .postLogoutRedirectUri("http://127.0.0.1:3000/")
-        .scope(OidcScopes.OPENID)
-        .scope(OidcScopes.PROFILE)
-        .scope("read")
-        .scope("write")
-        .clientSettings(ClientSettings.builder()
-            .requireAuthorizationConsent(false)
-            .requireProofKey(true)
-            .build())
-        .tokenSettings(TokenSettings.builder()
-            .accessTokenTimeToLive(Duration.ofMinutes(3))
-            .refreshTokenTimeToLive(Duration.ofDays(30))
-            .reuseRefreshTokens(false)
-            .build())
-        .build();
-
-    registeredClientRepository.save(spaClient);
-
-    RegisteredClient spaVue3Client = RegisteredClient.withId(UUID.randomUUID().toString())
-        .clientId("spa-client-vue3")
-        .clientName("SPA Client Vue3")
-        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-        .redirectUri("http://localhost:3001/callback")
-        .redirectUri("http://127.0.0.1:3001/callback")
-        .redirectUri("http://localhost:3001/silent-refresh.html")
-        .redirectUri("http://127.0.0.1:3001/silent-refresh.html")
-        .redirectUri("http://localhost:4173/callback")
-        .redirectUri("http://127.0.0.1:4173/callback")
-        .redirectUri("http://localhost:4173/silent-refresh.html")
-        .redirectUri("http://127.0.0.1:4173/silent-refresh.html")
-        .postLogoutRedirectUri("http://localhost:3001/")
-        .postLogoutRedirectUri("http://127.0.0.1:3001/")
-        .postLogoutRedirectUri("http://localhost:4173/")
-        .postLogoutRedirectUri("http://127.0.0.1:4173/")
-        .scope(OidcScopes.OPENID)
-        .scope(OidcScopes.PROFILE)
-        .scope("read")
-        .scope("write")
-        .clientSettings(ClientSettings.builder()
-            .requireAuthorizationConsent(false)
-            .requireProofKey(true)
-            .build())
-        .tokenSettings(TokenSettings.builder()
-            .accessTokenTimeToLive(Duration.ofMinutes(3))
-            .refreshTokenTimeToLive(Duration.ofDays(30))
-            .reuseRefreshTokens(false)
-            .build())
-        .build();
-
-    registeredClientRepository.save(spaVue3Client);
-
-    return registeredClientRepository;
   }
 
   // ==================== 授权存储 ====================
@@ -386,7 +251,7 @@ public class SecurityConfig {
           context.getClaims().claim("roles", roles);
         }
 
-        // 补充用户 profile 信息（email, phone, nickname）
+        // 补充用户 profile 信息（email, phone, nickname, totpEnabled）
         try {
           var userOpt = userRepository.findByUsername(username);
           if (userOpt.isPresent()) {
@@ -401,6 +266,7 @@ public class SecurityConfig {
               context.getClaims().claim("nickname", user.getNickname());
               context.getClaims().claim("preferred_username", user.getNickname());
             }
+            context.getClaims().claim("mfa_enabled", user.getTotpEnabled());
           }
         } catch (Exception ignored) {
           // client_credentials 模式下 username 是 client_id，无对应 User 记录
@@ -421,16 +287,6 @@ public class SecurityConfig {
     return AuthorizationServerSettings.builder()
         .issuer("http://localhost:9000")
         .build();
-  }
-
-  private static void deleteClientIfExists(RegisteredClientRepository repo, JdbcTemplate jdbc, String clientId) {
-    RegisteredClient existing = repo.findByClientId(clientId);
-    if (existing != null) {
-      String id = existing.getId();
-      jdbc.update("DELETE FROM oauth2_authorization WHERE registered_client_id = ?", id);
-      jdbc.update("DELETE FROM oauth2_authorization_consent WHERE registered_client_id = ?", id);
-      jdbc.update("DELETE FROM oauth2_registered_client WHERE id = ?", id);
-    }
   }
 
   private static String getClientIp(HttpServletRequest request) {

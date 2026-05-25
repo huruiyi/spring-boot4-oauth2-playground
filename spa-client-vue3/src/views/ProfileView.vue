@@ -99,6 +99,39 @@
       </div>
     </div>
 
+    <!-- MFA 设置 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-icon">🔐</span> MFA (两步验证)</div>
+      </div>
+      <div class="info-table">
+        <div class="info-row">
+          <div class="info-label">MFA Status</div>
+          <div class="info-value">
+            <span v-if="mfaEnabled" class="status-dot dot-green"></span>
+            <span v-else class="status-dot dot-gray"></span>
+            <span :class="mfaEnabled ? 'text-ok' : 'text-muted'">{{ mfaEnabled ? '已启用 (TOTP)' : '未启用' }}</span>
+          </div>
+        </div>
+        <div class="info-row" v-if="mfaEnabled">
+          <div class="info-label">Authenticator</div>
+          <div class="info-value">
+            <span class="text-muted">Google Authenticator / Microsoft Authenticator</span>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <a :href="mfaSetupUrl" target="_blank" class="btn btn-primary">
+          {{ mfaEnabled ? '⚙️ 管理 MFA 设置' : '🔐 启用 MFA' }}
+        </a>
+      </div>
+      <div class="hint-bar" style="margin-top:12px;margin-bottom:0">
+        {{ mfaEnabled 
+          ? 'MFA 已启用，登录时需要输入 Google Authenticator 生成的 6 位验证码。点击按钮可在新窗口管理 MFA 设置。'
+          : '启用 MFA 后，登录时需要输入 Google Authenticator 生成的 6 位验证码，提高账户安全性。' }}
+      </div>
+    </div>
+
     <!-- API -->
     <div class="api-grid">
       <div class="card">
@@ -205,7 +238,7 @@ function isLongValue(v) {
 const displayFields = computed(() => {
   const c = store.claims
   if (!c) return []
-  const fields = ['sub', 'preferred_username', 'nickname', 'email', 'phone', 'scp', 'scope', 'roles', 'iss', 'aud', 'azp', 'jti', 'sid']
+  const fields = ['sub', 'preferred_username', 'nickname', 'email', 'phone', 'scp', 'scope', 'roles', 'mfa_enabled', 'iss', 'aud', 'azp', 'jti', 'sid']
   return fields
     .filter((key) => c[key] !== undefined)
     .map((key) => {
@@ -214,6 +247,15 @@ const displayFields = computed(() => {
       if (Array.isArray(value)) value = value.join(', ')
       return { key, value }
     })
+})
+
+const mfaEnabled = computed(() => {
+  const c = store.claims
+  return c && c.mfa_enabled === true
+})
+
+const mfaSetupUrl = computed(() => {
+  return 'http://localhost:9000/mfa/setup'
 })
 
 function updateTokenStatus() {

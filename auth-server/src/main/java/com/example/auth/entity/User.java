@@ -46,6 +46,16 @@ public class User {
     @Builder.Default
     private String roles = "ROLE_USER";
 
+    @Column(length = 100)
+    private String totpSecret;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean totpEnabled = false;
+
+    @Column(length = 500)
+    private String recoveryCodes;
+
     private Instant createdAt;
 
     private Instant updatedAt;

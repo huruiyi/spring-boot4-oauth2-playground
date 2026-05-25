@@ -490,6 +490,87 @@ access_token 过期 → 定时检测 remaining < 60s
 
 > **注意**：Silent Refresh 需要用户在授权服务器仍有有效 session，否则 iframe 会显示登录页。
 
+## MFA (TOTP) 两步验证
+
+基于 Google Authenticator 的 TOTP（Time-based One-Time Password）两步验证实现。
+
+### 技术实现
+
+| 组件 | 技术/库 |
+|------|---------|
+| TOTP 生成/验证 | `com.warrenstrange:googleauth:1.5.0` |
+| QR 码生成 | `com.google.zxing:core:3.5.1` + `javase:3.5.1` |
+| 用户模型扩展 | User 实体添加 `totpSecret`、`totpEnabled` 字段 |
+| MFA Filter | `MfaAuthenticationFilter` 拦截未验证 session |
+| QR 码 CSP | `img-src 'self' data:;` 允许 base64 图片 |
+
+### 新增文件
+
+- `MfaService.java` - TOTP secret 生成、QR 码生成、验证码校验
+- `MfaController.java` - `/mfa/setup`、`/mfa/verify`、`/mfa/enable`、`/mfa/disable` 端点
+- `MfaAuthenticationFilter.java` - 登录后拦截未 MFA 验证的 session
+- `mfa-setup.html` - MFA 设置页面（显示 QR 码）
+- `mfa-verify.html` - MFA 验证页面（登录后输入验证码）
+- `mfa.css` - MFA 页面样式
+
+### 修改文件
+
+- `auth-server/pom.xml` - 添加 googleauth + zxing 依赖
+- `User.java` - 添加 `totpSecret`、`totpEnabled` 字段
+- `schema.sql` - 添加 `totp_secret`、`totp_enabled` 列
+- `SecurityConfig.java` - `/mfa/**` 路径 permitAll，CSP 添加 `img-src 'self' data:;`
+- `jwtTokenCustomizer()` - JWT claims 添加 `mfa_enabled` 字段
+
+### 使用流程
+
+#### 1. 启用 MFA
+
+1. 登录后访问 `http://localhost:9000/mfa/setup`
+2. 使用 Google Authenticator 扫描 QR 码
+3. 输入 6 位验证码完成绑定
+4. JWT token 的 claims 会包含 `mfa_enabled: true`
+
+#### 2. 登录流程（启用 MFA 后）
+
+1. 访问客户端应用，跳转到 Auth Server 登录页
+2. 输入用户名和密码
+3. 自动跳转到 `/mfa/verify`（MFA 验证页）
+4. 打开 Google Authenticator，输入显示的 6 位验证码
+5. 验证成功后继续 OAuth2 授权流程
+6. 完成登录，获取 access_token
+
+#### 3. 管理 MFA
+
+- 访问 `http://localhost:9000/mfa/setup` 可查看 MFA 状态
+- 已启用时显示绿色指示器，可点击"禁用 MFA"
+- 禁用后下次登录不再需要两步验证
+
+#### 4. spa-client-vue3 MFA 集成
+
+ProfileView 页面新增 **MFA (两步验证)** 卡片：
+
+- 显示 MFA 启用状态（绿色/灰色指示器）
+- ID Token claims 显示 `mfa_enabled` 字段
+- 提供"启用 MFA"/"管理 MFA 设置"按钮
+- 点击按钮新窗口打开 `http://localhost:9000/mfa/setup`
+
+**使用步骤：**
+
+1. 登录 spa-client-vue3 (`http://localhost:3001`)
+2. 进入 Profile 页面，查看 "MFA (两步验证)" 卡片
+3. 点击 "🔐 启用 MFA" 按钮
+4. 新窗口打开 Auth Server MFA 设置页
+5. 扫描 QR 码并输入验证码完成绑定
+6. 退出登录后重新登录，验证 MFA 流程
+7. 登录成功后 Profile 页面显示 "已启用 (TOTP)"
+
+### 安全说明
+
+1. **Session 属性**：`MFA_VERIFIED` 标记当前 session 已通过 MFA 验证
+2. **白名单路径**：`/mfa/verify`、`/mfa/setup`、`/login`、`/logout`、`/css/**`、`/js/**` 不拦截
+3. **TOTP Secret 存储**：存储在 MySQL `sys_user.totp_secret` 字段（生产环境应加密存储）
+4. **QR 码 CSP**：需要 `img-src 'self' data:;` 允许 base64 格式的 QR 码图片
+
 ## 预置客户端
 
 | Client ID | Secret | 认证方式 | 授权类型 | 说明 |

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MFA 设置 - OAuth2 授权服务器</title>
+    <link rel="stylesheet" th:href="@{/css/mfa.css}" href="/css/mfa.css" />
+</head>
+<body>
+    <div class="mfa-container">
+        <h1>🔐 MFA (TOTP) 设置</h1>
+        <p class="subtitle">Google Authenticator 两步验证</p>
+
+        <div class="success-msg" th:if="${param.success}">
+            ✅ MFA 已成功启用！
+        </div>
+
+        <div th:if="${totpEnabled}">
+            <div class="status-card enabled">
+                <h2>✅ MFA 已启用</h2>
+                <p>您的账户已开启两步验证，登录时需要输入 Google Authenticator 生成的 6 位验证码。</p>
+            </div>
+
+            <div th:if="${showRecoveryCodes}" class="recovery-codes-section">
+                <div class="status-card warning">
+                    <h2>⚠️ 恢复码（请妥善保存）</h2>
+                    <p>当无法访问 Google Authenticator 时，可使用恢复码登录。每个恢复码仅可使用一次。</p>
+                </div>
+                <div class="recovery-codes-grid">
+                    <div class="recovery-code" th:each="code, stat : ${recoveryCodes}">
+                        <span class="code-index" th:text="${stat.count}">1</span>
+                        <span class="code-value" th:text="${code}">CODE</span>
+                    </div>
+                </div>
+                <div class="recovery-codes-actions">
+                    <a href="/mfa/setup" class="btn btn-primary">已保存，返回设置</a>
+                </div>
+            </div>
+
+            <div th:unless="${showRecoveryCodes}">
+                <div class="recovery-codes-info">
+                    <h3>🔑 恢复码</h3>
+                    <p>剩余恢复码：<strong th:text="${recoveryCodesCount}">10</strong> 个</p>
+                    <p class="hint">当无法访问 Google Authenticator 时，可使用恢复码登录。</p>
+                </div>
+                <div class="actions">
+                    <form th:action="@{/mfa/regenerate-codes}" method="post" class="form-inline">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <button type="submit" class="btn btn-outline" onclick="return confirm('重新生成将使所有旧恢复码失效，确定继续？')">🔄 重新生成恢复码</button>
+                    </form>
+                    <form th:action="@{/mfa/disable}" method="post" class="form-inline">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('确定禁用 MFA？禁用后账户安全性将降低。')">⚠️ 禁用 MFA</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div th:unless="${totpEnabled}">
+            <div class="status-card">
+                <h2>📋 设置步骤</h2>
+                <ol>
+                    <li>在手机上下载 <strong>Google Authenticator</strong> 应用</li>
+                    <li>使用应用扫描下方二维码</li>
+                    <li>输入应用显示的 6 位验证码完成绑定</li>
+                </ol>
+            </div>
+
+            <div class="qr-section">
+                <img th:src="${qrCode}" alt="TOTP QR Code" class="qr-code" />
+                <div class="secret-box">
+                    <p><strong>密钥（手动输入）：</strong></p>
+                    <code th:text="${secret}">SECRET</code>
+                </div>
+            </div>
+
+            <div class="error-msg" th:if="${error}">
+                <span th:text="${error}">错误信息</span>
+            </div>
+
+            <form th:action="@{/mfa/enable}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                <input type="hidden" name="secret" th:value="${secret}" />
+                <div class="form-group">
+                    <label for="code">验证码</label>
+                    <input type="text" id="code" name="code" placeholder="请输入 6 位验证码" maxlength="6" required autofocus />
+                </div>
+                <button type="submit" class="btn-enable">启用 MFA</button>
+            </form>
+        </div>
+
+        <a href="/" class="btn btn-outline">返回首页</a>
+    </div>
+</body>
+</html>
