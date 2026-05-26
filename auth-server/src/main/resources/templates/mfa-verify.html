@@ -21,14 +21,14 @@
                 <label for="code">验证码</label>
                 <input type="text" id="code" name="code" placeholder="请输入 6 位验证码或 8 位恢复码" maxlength="8" required autofocus autocomplete="off" />
             </div>
-            <button type="submit" class="btn-verify">验证</button>
+            <button type="submit" class="btn btn-primary btn-block">验证</button>
         </form>
 
         <div th:if="${hasRecoveryCodes}" class="recovery-hint">
             <p>💡 无法访问验证器？可输入 8 位恢复码登录</p>
         </div>
 
-        <a href="/logout" class="btn btn-outline">退出登录</a>
+        <a href="/logout" class="btn btn-outline btn-block" style="margin-top:12px">退出登录</a>
     </div>
 </body>
 </html>

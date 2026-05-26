@@ -24,7 +24,7 @@
             <div th:if="${showRecoveryCodes}" class="recovery-codes-section">
                 <div class="status-card warning">
                     <h2>⚠️ 恢复码（请妥善保存）</h2>
-                    <p>当无法访问 Google Authenticator 时，可使用恢复码登录。每个恢复码仅可使用一次。</p>
+                    <p>当无法访问 Google Authenticator 时，可使用恢复码登录。<strong>每个恢复码仅可使用一次。</strong></p>
                 </div>
                 <div class="recovery-codes-grid">
                     <div class="recovery-code" th:each="code, stat : ${recoveryCodes}">
@@ -33,7 +33,7 @@
                     </div>
                 </div>
                 <div class="recovery-codes-actions">
-                    <a href="/mfa/setup" class="btn btn-primary">已保存，返回设置</a>
+                    <a href="/mfa/setup" class="btn btn-primary btn-block">✅ 已保存，返回设置</a>
                 </div>
             </div>
 
@@ -43,14 +43,15 @@
                     <p>剩余恢复码：<strong th:text="${recoveryCodesCount}">10</strong> 个</p>
                     <p class="hint">当无法访问 Google Authenticator 时，可使用恢复码登录。</p>
                 </div>
-                <div class="actions">
-                    <form th:action="@{/mfa/regenerate-codes}" method="post" class="form-inline">
+                <div class="actions-vertical">
+                    <form th:action="@{/mfa/regenerate-codes}" method="post">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                        <button type="submit" class="btn btn-outline" onclick="return confirm('重新生成将使所有旧恢复码失效，确定继续？')">🔄 重新生成恢复码</button>
+                        <button type="submit" class="btn btn-outline btn-block" onclick="return confirm('重新生成将使所有旧恢复码失效，确定继续？')">🔄 重新生成恢复码</button>
                     </form>
-                    <form th:action="@{/mfa/disable}" method="post" class="form-inline">
+                    <a href="/" class="btn btn-outline btn-block">← 返回首页</a>
+                    <form th:action="@{/mfa/disable}" method="post">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                        <button type="submit" class="btn btn-danger" onclick="return confirm('确定禁用 MFA？禁用后账户安全性将降低。')">⚠️ 禁用 MFA</button>
+                        <button type="submit" class="btn btn-danger btn-block" onclick="return confirm('确定禁用 MFA？禁用后账户安全性将降低。')">⚠️ 禁用 MFA</button>
                     </form>
                 </div>
             </div>
@@ -85,11 +86,11 @@
                     <label for="code">验证码</label>
                     <input type="text" id="code" name="code" placeholder="请输入 6 位验证码" maxlength="6" required autofocus />
                 </div>
-                <button type="submit" class="btn-enable">启用 MFA</button>
+                <button type="submit" class="btn btn-primary btn-block">启用 MFA</button>
             </form>
-        </div>
 
-        <a href="/" class="btn btn-outline">返回首页</a>
+            <a href="/" class="btn btn-outline btn-block">← 返回首页</a>
+        </div>
     </div>
 </body>
 </html>
