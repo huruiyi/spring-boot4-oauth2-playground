@@ -1,9 +1,9 @@
 import { createServer } from "http";
 import { readFile } from "fs/promises";
-import { join, extname } from "path";
+import { join, extname, resolve } from "path";
 
 const PORT = 3000;
-const DIR = import.meta.dirname;
+const DIR = resolve(import.meta.dirname, "../spa-client");
 
 const MIME = {
   ".html": "text/html",

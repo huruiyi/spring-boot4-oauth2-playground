@@ -14,6 +14,9 @@
     .badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; background: #e0e7ff; color: #4f46e5; vertical-align: middle; font-weight: 600; letter-spacing: .3px; }
 
     .hint-bar { color: #64748b; background: #f8fafc; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 12px; border: 1px solid #e2e8f0; line-height: 1.5; }
+    .card-actions { margin-top: 12px; }
+    .mfa-btn { display: inline-block; padding: 6px 14px; background: #fff; color: #667eea; border: 1px solid #667eea; border-radius: 6px; font-size: 12px; text-decoration: none; font-weight: 500; transition: all 0.2s; }
+    .mfa-btn:hover { background: #667eea; color: #fff; }
 
     .alert { padding: 10px 16px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; line-height: 1.5; display: none; }
     .alert.visible { display: block; }
@@ -193,6 +196,23 @@
     </div>
     <div class="section-label">Claims</div>
     <div class="info-table" id="claims-table"></div>
+  </div>
+
+  <!-- MFA -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><span class="card-icon">🔐</span> MFA (两步验证)</div>
+    </div>
+    <div class="info-table">
+      <div class="info-row">
+        <div class="info-label">MFA Status</div>
+        <div class="info-value" id="mfa-status">-</div>
+      </div>
+    </div>
+    <div id="mfa-action" class="card-actions" class="card-actions">
+      <a href="http://localhost:9000/mfa/setup" target="_blank" class="mfa-btn" id="mfa-btn">-</a>
+    </div>
+    <div class="hint-bar" id="mfa-hint" style="margin-top:8px;margin-bottom:0">-</div>
   </div>
 
   <!-- API -->

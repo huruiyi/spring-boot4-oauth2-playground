@@ -34,6 +34,7 @@ function updateTokenStatus() {
   updateRefreshTokenRow();
   updateAutoRefreshRow();
   updateClaimsTable(claims);
+  updateMfaStatus(claims);
 
   if (!expMs || expMs <= 0) {
     $('countdown').textContent = '';
@@ -101,7 +102,7 @@ function updateAutoRefreshRow() {
 function updateClaimsTable(claims) {
   const el = $('claims-table');
   el.innerHTML = '';
-  const fields = ['sub', 'preferred_username', 'nickname', 'email', 'phone', 'scp', 'scope', 'roles', 'iss', 'aud', 'azp', 'jti', 'sid'];
+  const fields = ['sub', 'preferred_username', 'nickname', 'email', 'phone', 'picture', 'scp', 'scope', 'roles', 'mfa_enabled', 'iss', 'aud', 'azp', 'jti', 'sid'];
   fields.forEach(key => {
     if (claims[key] === undefined) return;
     let value = claims[key];
@@ -113,6 +114,21 @@ function updateClaimsTable(claims) {
     row.innerHTML = `<div class="info-label">${key}</div><div class="info-value ${isLong ? 'mono-sm' : ''}">${value}</div>`;
     el.appendChild(row);
   });
+}
+
+function updateMfaStatus(claims) {
+  const statusEl = $('mfa-status');
+  const btnEl = $('mfa-btn');
+  const hintEl = $('mfa-hint');
+  if (!statusEl) return;
+  
+  const enabled = claims && claims.mfa_enabled === true;
+  statusEl.innerHTML = `<span class="status-dot ${enabled ? 'dot-green' : 'dot-gray'}"></span>` +
+    `<span class="${enabled ? 'text-ok' : 'text-muted'}">${enabled ? '已启用 (TOTP)' : '未启用'}</span>`;
+  btnEl.textContent = enabled ? '⚙️ 管理 MFA 设置' : '🔐 启用 MFA';
+  hintEl.textContent = enabled 
+    ? 'MFA 已启用，登录时需要输入 Google Authenticator 生成的 6 位验证码。' 
+    : '启用 MFA 后，登录时需要输入验证码，提高账户安全性。';
 }
 
 function startCountdown() {

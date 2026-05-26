@@ -266,6 +266,9 @@ public class SecurityConfig {
               context.getClaims().claim("nickname", user.getNickname());
               context.getClaims().claim("preferred_username", user.getNickname());
             }
+            if (user.getAvatar() != null) {
+              context.getClaims().claim("picture", user.getAvatar());
+            }
             context.getClaims().claim("mfa_enabled", user.getTotpEnabled());
           }
         } catch (Exception ignored) {

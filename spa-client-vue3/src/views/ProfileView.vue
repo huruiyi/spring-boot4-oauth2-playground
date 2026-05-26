@@ -120,8 +120,8 @@
           </div>
         </div>
       </div>
-      <div class="actions">
-        <a :href="mfaSetupUrl" target="_blank" class="btn btn-primary">
+      <div class="card-actions">
+        <a :href="mfaSetupUrl" target="_blank" class="mfa-btn">
           {{ mfaEnabled ? '⚙️ 管理 MFA 设置' : '🔐 启用 MFA' }}
         </a>
       </div>
@@ -238,7 +238,7 @@ function isLongValue(v) {
 const displayFields = computed(() => {
   const c = store.claims
   if (!c) return []
-  const fields = ['sub', 'preferred_username', 'nickname', 'email', 'phone', 'scp', 'scope', 'roles', 'mfa_enabled', 'iss', 'aud', 'azp', 'jti', 'sid']
+  const fields = ['sub', 'preferred_username', 'nickname', 'email', 'phone', 'picture', 'scp', 'scope', 'roles', 'mfa_enabled', 'iss', 'aud', 'azp', 'jti', 'sid']
   return fields
     .filter((key) => c[key] !== undefined)
     .map((key) => {
@@ -476,6 +476,9 @@ h1 { font-size: 22px; margin: 0; color: #1e293b; }
 .section-label { color: #64748b; font-size: 12px; margin: 16px 0 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
 
 .actions { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+.card-actions { margin-top: 12px; }
+.mfa-btn { display: inline-block; padding: 6px 14px; background: #fff; color: #667eea; border: 1px solid #667eea; border-radius: 6px; font-size: 12px; text-decoration: none; font-weight: 500; transition: all 0.2s; }
+.mfa-btn:hover { background: #667eea; color: #fff; }
 
 .btn { display: inline-flex; align-items: center; padding: 7px 18px; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; gap: 4px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }

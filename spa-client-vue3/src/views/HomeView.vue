@@ -36,11 +36,11 @@ function login() {
 .home { max-width: 800px; margin: 40px auto; padding: 0 20px; }
 h1 { font-size: 24px; margin-bottom: 20px; }
 h2 { font-size: 18px; margin: 0 0 12px; color: #555; }
-.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #e0e7ff; color: #4f46e5; vertical-align: middle; }
-.card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; background: #e0e7ff; color: #4f46e5; vertical-align: middle; font-weight: 600; letter-spacing: .3px; }
+.card { background: #fff; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border: 1px solid #f1f5f9; }
 .desc { margin: 0 0 12px; color: #666; line-height: 1.6; }
 .steps { padding-left: 20px; line-height: 1.8; color: #555; }
-.btn { display: inline-block; padding: 10px 24px; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.btn { display: inline-flex; align-items: center; padding: 7px 18px; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; gap: 4px; }
 .btn-primary { background: #4f46e5; }
 .btn-primary:hover { background: #4338ca; }
 </style>
