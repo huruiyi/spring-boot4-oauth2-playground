@@ -70,8 +70,9 @@
 - [x] MFA 无限循环修复 — MFA filter 仅拦截 MFA_REQUIRED session 标记
 - [x] auth-server 首页映射 — `/` 路径 LoginController + home.html
 - [x] RSA 密钥持久化 — RsaKeyConfig 从文件加载或生成并保存，重启后 JWT 不失效
+- [x] TOTP Secret 加密存储 — AES-256-GCM 加密，密钥从用户配置目录加载
 
-## 未实现（8 项）
+## 未实现（7 项）
 
 | # | 功能 | 分类 | 优先级 | 说明 |
 |---|------|------|--------|------|
@@ -80,9 +81,8 @@
 | 3 | i18n 国际化 | 功能完善 | 中 | 中英文切换，登录页/测试页/错误提示多语言 |
 | 4 | TypeScript 迁移 | 功能完善 | 中 | spa-client-vue3 迁移为 TS，oauth2.js 类型化 |
 | 5 | 单元测试 + ESLint/Prettier | 开发体验 | 高 | Vitest 测试 oauth2.js PKCE/JWT 解码；代码规范和格式化 |
-| 6 | TOTP Secret 加密存储 | 安全加固 | 高 | 当前明文存储在 MySQL，生产环境应 AES 加密 |
-| 7 | CSP nonce 替代 unsafe-inline | 安全加固 | 中 | 当前 CSP 使用 'unsafe-inline' 削弱 XSS 防护 |
-| 8 | 用户头像 UI 展示 | 功能完善 | 低 | JWT 已输出 picture claim，前端未渲染头像图片 |
+| 6 | CSP nonce 替代 unsafe-inline | 安全加固 | 中 | 当前 CSP 使用 'unsafe-inline' 削弱 XSS 防护 |
+| 7 | 用户头像 UI 展示 | 功能完善 | 低 | JWT 已输出 picture claim，前端未渲染头像图片 |
 
 ---
 

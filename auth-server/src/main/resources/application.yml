@@ -2,7 +2,10 @@ server:
   port: 9000
 
 rsa-key:
-  file: ./config/rsa-key.json
+  file: ${user.home}/.config/spring-boot4-oauth2/rsa-key.json
+
+aes-key:
+  file: ${user.home}/.config/spring-boot4-oauth2/aes-key.key
 
 spring:
   application:

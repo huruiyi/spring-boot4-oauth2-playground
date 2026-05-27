@@ -2,6 +2,7 @@ package com.example.auth.controller;
 
 import com.example.auth.entity.User;
 import com.example.auth.repository.UserRepository;
+import com.example.auth.service.AesEncryptionService;
 import com.example.auth.service.MfaService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class MfaController {
 
     private final MfaService mfaService;
     private final UserRepository userRepository;
+    private final AesEncryptionService aesEncryptionService;
 
     private static final String MFA_VERIFIED = "MFA_VERIFIED";
     private static final String ISSUER = "Spring-Boot4-OAuth2";
@@ -74,7 +76,8 @@ public class MfaController {
         List<String> recoveryCodes = mfaService.generateRecoveryCodes();
         String recoveryCodesJson = mfaService.serializeRecoveryCodes(recoveryCodes);
         
-        user.setTotpSecret(secret);
+        String encryptedSecret = aesEncryptionService.encrypt(secret);
+        user.setTotpSecret(encryptedSecret);
         user.setTotpEnabled(true);
         user.setRecoveryCodes(recoveryCodesJson);
         userRepository.save(user);
@@ -154,7 +157,7 @@ public class MfaController {
             return "redirect:/";
         }
         
-        boolean totpValid = mfaService.isCodeValid(user.getTotpSecret(), code);
+        boolean totpValid = mfaService.isCodeValid(aesEncryptionService.decrypt(user.getTotpSecret()), code);
         
         String updatedRecoveryCodes = null;
         boolean recoveryCodeUsed = false;
