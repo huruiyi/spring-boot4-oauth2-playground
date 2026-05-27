@@ -69,8 +69,9 @@
 - [x] CSP 修复 — img-src data: (base64 QR码) + script-src/style-src unsafe-inline
 - [x] MFA 无限循环修复 — MFA filter 仅拦截 MFA_REQUIRED session 标记
 - [x] auth-server 首页映射 — `/` 路径 LoginController + home.html
+- [x] RSA 密钥持久化 — RsaKeyConfig 从文件加载或生成并保存，重启后 JWT 不失效
 
-## 未实现（7 项）
+## 未实现（8 项）
 
 | # | 功能 | 分类 | 优先级 | 说明 |
 |---|------|------|--------|------|
@@ -81,8 +82,7 @@
 | 5 | 单元测试 + ESLint/Prettier | 开发体验 | 高 | Vitest 测试 oauth2.js PKCE/JWT 解码；代码规范和格式化 |
 | 6 | TOTP Secret 加密存储 | 安全加固 | 高 | 当前明文存储在 MySQL，生产环境应 AES 加密 |
 | 7 | CSP nonce 替代 unsafe-inline | 安全加固 | 中 | 当前 CSP 使用 'unsafe-inline' 削弱 XSS 防护 |
-| 8 | RSA 密钥持久化 | 安全加固 | 中 | 每次重启重新生成导致旧 JWT 失效，生产环境应使用固定密钥 |
-| 9 | 用户头像 UI 展示 | 功能完善 | 低 | JWT 已输出 picture claim，前端未渲染头像图片 |
+| 8 | 用户头像 UI 展示 | 功能完善 | 低 | JWT 已输出 picture claim，前端未渲染头像图片 |
 
 ---
 

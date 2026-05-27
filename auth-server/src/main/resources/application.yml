@@ -1,6 +1,9 @@
 server:
   port: 9000
 
+rsa-key:
+  file: ./config/rsa-key.json
+
 spring:
   application:
     name: auth-server

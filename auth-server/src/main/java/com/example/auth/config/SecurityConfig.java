@@ -41,12 +41,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.util.List;
-import java.util.UUID;
 
 @Configuration
 @EnableWebSecurity
@@ -193,26 +188,9 @@ public class SecurityConfig {
   // ==================== JWT 配置 ====================
 
   @Bean
-  public JWKSource<SecurityContext> jwkSource() {
-    KeyPair keyPair = generateRsaKey();
-    RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
-    RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
-    RSAKey rsaKey = new RSAKey.Builder(publicKey)
-        .privateKey(privateKey)
-        .keyID(UUID.randomUUID().toString())
-        .build();
+  public JWKSource<SecurityContext> jwkSource(RSAKey rsaKey) {
     JWKSet jwkSet = new JWKSet(rsaKey);
     return new ImmutableJWKSet<>(jwkSet);
-  }
-
-  private static KeyPair generateRsaKey() {
-    try {
-      KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-      keyPairGenerator.initialize(2048);
-      return keyPairGenerator.generateKeyPair();
-    } catch (Exception ex) {
-      throw new IllegalStateException("Failed to generate RSA key pair", ex);
-    }
   }
 
   @Bean
