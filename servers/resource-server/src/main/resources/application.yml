@@ -1,0 +1,18 @@
+server:
+  port: 9200
+
+spring:
+  application:
+    name: resource-server
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9100
+          jwk-set-uri: http://localhost:9100/oauth2/jwks
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG

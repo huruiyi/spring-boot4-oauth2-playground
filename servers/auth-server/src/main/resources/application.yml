@@ -1,0 +1,72 @@
+server:
+  port: 9100
+
+auth:
+  lock:
+    max-failed-attempts: 5
+    auto-unlock-minutes: 30
+  trusted-proxies:
+
+rsa-key:
+  file: ${user.home}/.config/spring-boot4-oauth2/rsa-key.json
+
+aes-key:
+  file: ${user.home}/.config/spring-boot4-oauth2/aes-key.key
+
+spring:
+  application:
+    name: auth-server
+
+  # MySQL
+  datasource:
+    url: jdbc:mysql://localhost:3306/sb4_auth?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    username: root
+    password: fairy-vip
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+
+  # JPA
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # Redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: 3000ms
+
+  # SQL 初始化（首次运行后改为 never）
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+      encoding: UTF-8
+
+  # Thymeleaf
+  thymeleaf:
+    cache: false
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    com.example.auth: DEBUG

@@ -6,18 +6,18 @@
 
 ```mermaid
 graph TB
-    subgraph Client["🖥️ OAuth2 Client (port 8080)"]
+    subgraph Client["🖥️ OAuth2 Client (port 8100)"]
         CC[Thymeleaf 前端]
         WC[WebClient]
     end
 
-    subgraph AuthServer["🔐 Auth Server (port 9000)"]
+    subgraph AuthServer["🔐 Auth Server (port 9100)"]
         Login[登录页 /login]
         AuthEP[OAuth2 协议端点]
         JWT[JWT 签发 / JWK Set]
     end
 
-    subgraph ResourceServer["📦 Resource Server (port 9001)"]
+    subgraph ResourceServer["📦 Resource Server (port 9200)"]
         API[REST API]
         JWTVerify[JWT 验证]
     end
@@ -37,10 +37,10 @@ graph TB
 ```mermaid
 sequenceDiagram
     actor User
-    participant Client as OAuth2 Client<br/>(port 8080)
-    participant Auth as Auth Server<br/>(port 9000)
+    participant Client as OAuth2 Client<br/>(port 8100)
+    participant Auth as Auth Server<br/>(port 9100)
     participant MySQL as MySQL
-    participant Resource as Resource Server<br/>(port 9001)
+    participant Resource as Resource Server<br/>(port 9200)
 
     User->>Client: ① 访问受保护页面
     Client->>Auth: ② 重定向 /oauth2/authorize
@@ -110,19 +110,19 @@ mvn clean package -DskipTests
 
 **终端 1 — 启动 Auth Server**
 ```bash
-cd auth-server
+cd servers/auth-server
 mvn spring-boot:run
 ```
 
 **终端 2 — 启动 Resource Server**
 ```bash
-cd resource-server
+cd servers/resource-server
 mvn spring-boot:run
 ```
 
 **终端 3 — 启动 OAuth2 Client**
 ```bash
-cd oauth2-client
+cd clients/oauth2-client
 mvn spring-boot:run
 ```
 
@@ -130,26 +130,26 @@ mvn spring-boot:run
 
 ```bash
 # 方式一：Python 内置 http.server
-cd spa-client
+cd spa/spa-client
 python -m http.server 3000
 
 # 方式二：Node.js npx serve
-cd spa-client
+cd spa/spa-client
 npx serve -l 3000
 
 # 方式三：Python 自定义服务器
-cd spa-client
+cd spa/spa-client
 python scripts/serve.py
 
 # 方式四：Node.js 原生服务器
-cd spa-client
+cd spa/spa-client
 node scripts/serve.mjs
 ```
 
 **终端 5 — 启动 SPA Vue3 Client**
 
 ```bash
-cd spa-client-vue3
+cd spa/spa-client-vue3
 pnpm install
 pnpm dev
 ```
@@ -158,9 +158,9 @@ pnpm dev
 
 #### 方式一：浏览器测试（推荐）
 
-1. 打开 http://localhost:8080
+1. 打开 http://localhost:8100
 2. 点击"登录访问受保护页面"
-3. 跳转到 Auth Server 登录页 (localhost:9000/login)
+3. 跳转到 Auth Server 登录页 (localhost:9100/login)
 4. 输入账号密码：
    - **管理员**: `admin` / `password`
    - **普通用户**: `user` / `password`
@@ -170,7 +170,7 @@ pnpm dev
 #### 方式二：SPA 客户端测试（PKCE 演示）
 
 1. 确保已启动 SPA Client（端口 3000）
-2. 打开 http://localhost:3000
+2. 打开 http://localhost:3100
 3. 点击"登录"，跳转到 Auth Server 登录页
 4. 输入账号密码（`admin`/`password` 或 `user`/`password`）
 5. 授权同意后跳回 SPA，显示用户信息和 JWT
@@ -179,7 +179,7 @@ pnpm dev
 #### 方式三：SPA Vue3 客户端测试
 
 1. 确保已启动 SPA Vue3 Client（端口 3001）
-2. 打开 http://localhost:3001
+2. 打开 http://localhost:3200
 3. 点击"登录"，跳转到 Auth Server 登录页
 4. 输入账号密码并授权同意
 5. 自动跳转到测试页 `/profile`，显示用户信息、Token 和 API 调用
@@ -188,25 +188,25 @@ pnpm dev
 
 **获取授权码 (浏览器访问)**
 ```
-http://localhost:9000/oauth2/authorize?response_type=code&client_id=oidc-client&scope=openid%20profile%20read%20write&redirect_uri=http://127.0.0.1:8080/login/oauth2/code/my-client
+http://localhost:9100/oauth2/authorize?response_type=code&client_id=oidc-client&scope=openid%20profile%20read%20write&redirect_uri=http://127.0.0.1:8100/login/oauth2/code/my-client
 ```
 
 **Client Credentials 模式获取 Token**
 ```bash
-curl -X POST http://localhost:9000/oauth2/token \
+curl -X POST http://localhost:9100/oauth2/token \
   -H "Authorization: Basic $(echo -n 'resource-server:secret' | base64)" \
   -d "grant_type=client_credentials&scope=read write"
 ```
 
 **使用 JWT 访问资源服务器**
 ```bash
-curl http://localhost:9001/api/user/info \
+curl http://localhost:9200/api/user/info \
   -H "Authorization: Bearer <your-access-token>"
 ```
 
 **公开接口（无需 Token）**
 ```bash
-curl http://localhost:9001/api/public/hello
+curl http://localhost:9200/api/public/hello
 ```
 
 ## 模块说明
@@ -312,29 +312,29 @@ OAuth2 客户端应用：
 
 ```bash
 # 方式一：Python 自定义服务器
-cd spa-client
+cd spa/spa-client
 python scripts/serve.py
 
 # 方式二：Python 内置 http.server
-cd spa-client
+cd spa/spa-client
 python -m http.server 3000
 # 或
 scripts/serve-py-http-server.bat   # Windows
 bash scripts/serve-py-http-server.sh      # Linux/Mac
 
 # 方式三：Node.js 原生 HTTP 服务器
-cd spa-client
+cd spa/spa-client
 node scripts/serve.mjs
 
 # 方式四：npx http-server（禁用缓存）
-cd spa-client
+cd spa/spa-client
 npx http-server -p 3000 -c-1
 # 或
 scripts/serve-http-server.bat   # Windows
 bash scripts/serve-http-server.sh  # Linux/Mac
 ```
 
-访问 http://localhost:3000 测试完整 OAuth2 PKCE 流程。
+访问 http://localhost:3100 测试完整 OAuth2 PKCE 流程。
 
 ### spa-client-vue3 (端口 3001)
 
@@ -414,12 +414,12 @@ Vue3 + Vite + Vue Router + Pinia + Axios SPA 应用，功能与 `spa-client` 完
 #### 启动 SPA Vue3 客户端
 
 ```bash
-cd spa-client-vue3
+cd spa/spa-client-vue3
 pnpm install
 pnpm dev
 ```
 
-访问 http://localhost:3001
+访问 http://localhost:3200
 
 ## PKCE（Proof Key for Code Exchange）
 
@@ -525,7 +525,7 @@ access_token 过期 → 定时检测 remaining < 60s
 
 #### 1. 启用 MFA
 
-1. 登录后访问 `http://localhost:9000/mfa/setup`
+1. 登录后访问 `http://localhost:9100/mfa/setup`
 2. 使用 Google Authenticator 扫描 QR 码
 3. 输入 6 位验证码完成绑定
 4. JWT token 的 claims 会包含 `mfa_enabled: true`
@@ -541,7 +541,7 @@ access_token 过期 → 定时检测 remaining < 60s
 
 #### 3. 管理 MFA
 
-- 访问 `http://localhost:9000/mfa/setup` 可查看 MFA 状态
+- 访问 `http://localhost:9100/mfa/setup` 可查看 MFA 状态
 - 已启用时显示绿色指示器，可点击"禁用 MFA"
 - 禁用后下次登录不再需要两步验证
 
@@ -552,11 +552,11 @@ ProfileView 页面新增 **MFA (两步验证)** 卡片：
 - 显示 MFA 启用状态（绿色/灰色指示器）
 - ID Token claims 显示 `mfa_enabled` 字段
 - 提供"启用 MFA"/"管理 MFA 设置"按钮
-- 点击按钮新窗口打开 `http://localhost:9000/mfa/setup`
+- 点击按钮新窗口打开 `http://localhost:9100/mfa/setup`
 
 **使用步骤：**
 
-1. 登录 spa-client-vue3 (`http://localhost:3001`)
+1. 登录 spa-client-vue3 (`http://localhost:3200`)
 2. 进入 Profile 页面，查看 "MFA (两步验证)" 卡片
 3. 点击 "🔐 启用 MFA" 按钮
 4. 新窗口打开 Auth Server MFA 设置页
@@ -589,7 +589,7 @@ ProfileView 页面新增 **MFA (两步验证)** 卡片：
 
 ## MySQL 数据库配置
 
-修改 `auth-server/src/main/resources/application.yml`:
+修改 `servers/auth-server/src/main/resources/application.yml`:
 
 ```yaml
 spring:

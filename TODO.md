@@ -34,7 +34,7 @@
 
 ### 客户端应用
 
-- [x] .oauth2Login() 客户端 (oauth2-client, 端口 8080)
+- [x] .oauth2Login() 客户端 (oauth2-client, 端口 8100)
 - [x] .oauth2Client() 客户端
 - [x] SPA 客户端 (spa-client) — 原生 HTML/JS, 端口 3000
 - [x] SPA Vue3 客户端 (spa-client-vue3) — Vite+Vue3+Vue Router, 端口 3001

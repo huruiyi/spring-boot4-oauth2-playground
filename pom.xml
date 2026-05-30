@@ -19,10 +19,10 @@
     <description>Spring Boot 4 OAuth2 Playground - Authorization Server + Resource Server + Client + SPA</description>
 
     <modules>
-        <module>auth-server</module>
-        <module>resource-server</module>
-        <module>oauth2-client</module>
-        <module>oauth2-client-demo</module>
+        <module>servers/auth-server</module>
+        <module>servers/resource-server</module>
+        <module>clients/oauth2-client</module>
+        <module>clients/oauth2-client-demo</module>
     </modules>
 
     <properties>
