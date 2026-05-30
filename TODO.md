@@ -61,7 +61,7 @@
 - [x] MFA 页面样式优化 — 统一按钮系统 + 垂直按钮组 + Tailwind 色板
 - [x] picture claim 展示 — spa-client + spa-client-vue3 claims 表格均已包含
 - [x] spa-client-vue3 样式统一 — HomeView/ProfileView 对齐 spa-client 基准风格（卡片/badge/按钮）
-- [x] spa-client-scripts 迁移 — 服务脚本从 spa-client/scripts/ 提取为顶层独立目录
+- [x] scripts 迁移 — 服务脚本从 spa-client/scripts/ 提取为顶层 scripts 目录
 - [x] 用户注册/管理 — UserService + UserController，注册/编辑/删除/列表/密码修改
 - [x] 账户锁定/登录限速 — 失败5次锁定账户 + 30分钟自动解锁 + Redis IP限速(20次/5分钟)
 

@@ -34,7 +34,7 @@
 | oauth2-client-demo | `clients/oauth2-client-demo` | 8082 | OAuth2 客户端演示 (client_credentials) |
 | spa-client | `spa/spa-client` | 3000 | 纯 HTML SPA 公共客户端 (PKCE) |
 | spa-client-vue3 | `spa/spa-client-vue3` | 3001 | Vue 3 SPA 公共客户端 (PKCE) |
-| spa-client-scripts | `scripts/spa-client-scripts` | - | SPA 静态文件服务脚本 |
+| scripts | `scripts` | - | SPA 静态文件服务脚本 |
 
 ### 各模块关键依赖
 
