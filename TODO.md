@@ -62,6 +62,8 @@
 - [x] picture claim 展示 — spa-client + spa-client-vue3 claims 表格均已包含
 - [x] spa-client-vue3 样式统一 — HomeView/ProfileView 对齐 spa-client 基准风格（卡片/badge/按钮）
 - [x] spa-client-scripts 迁移 — 服务脚本从 spa-client/scripts/ 提取为顶层独立目录
+- [x] 用户注册/管理 — UserService + UserController，注册/编辑/删除/列表/密码修改
+- [x] 账户锁定/登录限速 — 失败5次锁定账户 + 30分钟自动解锁 + Redis IP限速(20次/5分钟)
 
 ### 项目结构
 
@@ -72,17 +74,44 @@
 - [x] RSA 密钥持久化 — RsaKeyConfig 从文件加载或生成并保存，重启后 JWT 不失效
 - [x] TOTP Secret 加密存储 — AES-256-GCM 加密，密钥从用户配置目录加载
 
-## 未实现（7 项）
+## 未实现（20 项）
+
+### 🔴 高优先级（生产必备）
 
 | # | 功能 | 分类 | 优先级 | 说明 |
 |---|------|------|--------|------|
-| 1 | Device Flow | OAuth2 扩展 | 中 | 设备码流程（IoT/CLI），schema 已预留 device_code 字段 |
-| 2 | 暗黑模式 | 功能完善 | 低 | ProfileView 添加主题切换，需 CSS 变量 + localStorage |
-| 3 | i18n 国际化 | 功能完善 | 中 | 中英文切换，登录页/测试页/错误提示多语言 |
-| 4 | TypeScript 迁移 | 功能完善 | 中 | spa-client-vue3 迁移为 TS，oauth2.js 类型化 |
-| 5 | 单元测试 + ESLint/Prettier | 开发体验 | 高 | Vitest 测试 oauth2.js PKCE/JWT 解码；代码规范和格式化 |
-| 6 | CSP nonce 替代 unsafe-inline | 安全加固 | 中 | 当前 CSP 使用 'unsafe-inline' 削弱 XSS 防护 |
-| 7 | 用户头像 UI 展示 | 功能完善 | 低 | JWT 已输出 picture claim，前端未渲染头像图片 |
+| 1 | 单元测试 + ESLint/Prettier | 开发体验 | 高 | Vitest 测试 oauth2.js PKCE/JWT 解码；代码规范和格式化 |
+- [x] 用户注册/管理 | 用户体系 | 高 | 当前仅硬编码2个用户，需注册、编辑、删除、列表接口 |
+| 3 | 密码重置（Forgot Password） | 用户体系 | 高 | 邮箱/短信验证码重置密码，几乎所有项目必需 |
+| 4 | 账户锁定/登录限速 | 安全加固 | 高 | 防暴力破解：失败N次锁定账户 + IP限速（Rate Limiting） |
+| 5 | Docker Compose | 开发体验 | 高 | MySQL+Redis+多服务一键启动，开发/部署必备 |
+
+### 🟡 中优先级（常用增强）
+
+| # | 功能 | 分类 | 优先级 | 说明 |
+|---|------|------|--------|------|
+| 6 | 社交登录（GitHub/Google） | OAuth2 扩展 | 中 | Spring Security 原生支持，极常见需求 |
+| 7 | 审计日志 | 安全加固 | 中 | 记录谁在何时做了什么，合规/排查必备 |
+| 8 | Spring Actuator 健康检查 | 运维监控 | 中 | 生产监控、K8s就绪探针标配 |
+| 9 | Redis Token 黑名单 | 性能优化 | 中 | 当前 token 撤销基于 JDBC，Redis 方案性能更优 |
+| 10 | 邮箱验证 | 用户体系 | 中 | 注册后验证邮箱，防止垃圾账户 |
+| 11 | Device Flow | OAuth2 扩展 | 中 | 设备码流程（IoT/CLI），schema 已预留 device_code 字段 |
+| 12 | i18n 国际化 | 功能完善 | 中 | 中英文切换，登录页/测试页/错误提示多语言 |
+| 13 | TypeScript 迁移 | 功能完善 | 中 | spa-client-vue3 迁移为 TS，oauth2.js 类型化 |
+| 14 | CSP nonce 替代 unsafe-inline | 安全加固 | 中 | 当前 CSP 使用 'unsafe-inline' 削弱 XSS 防护 |
+| 15 | Token Exchange (RFC 8693) | OAuth2 扩展 | 中 | 微服务间委托访问，降级/ impersonation 场景 |
+
+### 🟢 低优先级（锦上添花）
+
+| # | 功能 | 分类 | 优先级 | 说明 |
+|---|------|------|--------|------|
+| 16 | 管理后台 UI | 功能完善 | 低 | 用户/客户端/Token 可视化管理界面 |
+| 17 | 暗黑模式 | 功能完善 | 低 | ProfileView 添加主题切换，需 CSS 变量 + localStorage |
+| 18 | 用户头像 UI 展示 | 功能完善 | 低 | JWT 已输出 picture claim，前端未渲染头像图片 |
+| 19 | SAML 2.0 集成 | OAuth2 扩展 | 低 | 企业 SSO 场景，Spring Security 原生支持 |
+| 20 | Token 自动清理 | 运维监控 | 低 | 定时任务清理过期 OAuth2Authorization 记录，防止表膨胀 |
+| 21 | 多租户支持 | 架构扩展 | 低 | 不同租户隔离用户/客户端/Token |
+| 22 | API 文档（Swagger/OpenAPI） | 开发体验 | 低 | resource-server API 文档自动生成 |
 
 ---
 

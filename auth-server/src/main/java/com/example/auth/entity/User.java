@@ -56,6 +56,16 @@ public class User {
     @Column(length = 500)
     private String recoveryCodes;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer failedAttempts = 0;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean accountNonLocked = true;
+
+    private Instant lockedAt;
+
     private Instant createdAt;
 
     private Instant updatedAt;

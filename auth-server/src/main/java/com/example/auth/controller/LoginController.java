@@ -42,7 +42,10 @@ public class LoginController {
     }
 
     @GetMapping("/login")
-    public String login() {
+    public String login(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails != null) {
+            return "redirect:/";
+        }
         return "login";
     }
 }

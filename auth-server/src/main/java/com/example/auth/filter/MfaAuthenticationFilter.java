@@ -39,6 +39,7 @@ public class MfaAuthenticationFilter extends OncePerRequestFilter {
         "/mfa/disable",
         "/login",
         "/logout",
+        "/users/register",
         "/css/",
         "/js/",
         "/error"

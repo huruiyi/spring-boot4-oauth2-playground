@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - OAuth2 授权服务器</title>
+    <link rel="stylesheet" th:href="@{/css/home.css}" href="/css/home.css" />
+    <style>
+        .user-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .user-table th, .user-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .user-table th { background: #f8fafc; color: #64748b; font-weight: 600; }
+        .user-table td { color: #334155; }
+        .user-table tr:hover td { background: #f8fafc; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; border-radius: 4px; text-decoration: none; display: inline-block; margin-right: 4px; }
+        .btn-edit { background: #dbeafe; color: #2563eb; }
+        .btn-delete { background: #fee2e2; color: #dc2626; }
+        .btn-pwd { background: #fef3c7; color: #d97706; }
+        .btn-unlock { background: #dbeafe; color: #2563eb; }
+        .badge-red { background: #fee2e2; color: #dc2626; }
+        .badge-green { background: #dcfce7; color: #16a34a; }
+        .badge-gray { background: #f1f5f9; color: #94a3b8; }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .card-actions { margin-top: 16px; display: flex; gap: 8px; }
+        .btn { display: inline-block; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+        .btn-outline { background: #fff; color: #667eea; border: 1px solid #667eea; }
+        .error-banner { background: #fee2e2; color: #dc2626; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; }
+        .self-marker { color: #94a3b8; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div class="home-container">
+        <header class="header">
+            <div class="header-left">
+                <h1>👥 用户管理</h1>
+                <p class="subtitle">OAuth2 Authorization Server</p>
+            </div>
+            <div class="header-right">
+                <a href="/users/register" class="btn btn-primary">+ 新增用户</a>
+                <a href="/" class="btn btn-outline">← 返回首页</a>
+            </div>
+        </header>
+
+        <div class="error-banner" th:if="${param.error == 'self'}">
+            不能删除当前登录的用户
+        </div>
+
+        <div class="card">
+            <h2>用户列表</h2>
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>昵称</th>
+                        <th>邮箱</th>
+                        <th>角色</th>
+                        <th>状态</th>
+                        <th>MFA</th>
+                        <th>登录失败</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="u : ${users}">
+                        <td th:text="${u.id}">1</td>
+                        <td>
+                            <span th:text="${u.username}">admin</span>
+                            <span class="self-marker" th:if="${u.username == currentUser}">（当前）</span>
+                        </td>
+                        <td th:text="${u.nickname} ?: '-'">管理员</td>
+                        <td th:text="${u.email} ?: '-'">-</td>
+                        <td th:text="${u.roles}">ROLE_USER</td>
+                        <td>
+                            <span th:if="${u.enabled}" class="badge badge-green">启用</span>
+                            <span th:unless="${u.enabled}" class="badge badge-red">禁用</span>
+                        </td>
+                        <td>
+                            <span th:if="${u.totpEnabled}" class="badge badge-green">已启用</span>
+                            <span th:unless="${u.totpEnabled}" class="badge badge-gray">未启用</span>
+                        </td>
+                        <td>
+                            <span th:if="${!u.accountNonLocked}" class="badge badge-red">已锁定</span>
+                            <span th:if="${u.accountNonLocked and u.failedAttempts > 0}" class="badge badge-gray" th:text="${u.failedAttempts} + '次'">0次</span>
+                            <span th:if="${u.accountNonLocked and u.failedAttempts == 0}" class="badge badge-green">正常</span>
+                        </td>
+                        <td>
+                            <a th:href="@{/users/{id}/edit(id=${u.id})}" class="btn-sm btn-edit">编辑</a>
+                            <form th:if="${!u.accountNonLocked}" th:action="@{/users/{id}/unlock(id=${u.id})}" method="post" style="display:inline">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn-sm btn-unlock">解锁</button>
+                            </form>
+                            <form th:action="@{/users/{id}/delete(id=${u.id})}" method="post" style="display:inline"
+                                  th:if="${u.username != currentUser}"
+                                  onsubmit="return confirm('确定删除用户？')">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <button type="submit" class="btn-sm btn-delete">删除</button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

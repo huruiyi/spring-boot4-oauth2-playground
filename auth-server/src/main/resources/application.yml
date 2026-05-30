@@ -1,6 +1,11 @@
 server:
   port: 9000
 
+auth:
+  lock:
+    max-failed-attempts: 5
+    auto-unlock-minutes: 30
+
 rsa-key:
   file: ${user.home}/.config/spring-boot4-oauth2/rsa-key.json
 

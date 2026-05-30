@@ -2,6 +2,7 @@ package com.example.auth.config;
 
 import com.example.auth.entity.User;
 import com.example.auth.filter.MfaAuthenticationFilter;
+import com.example.auth.handler.LoginFailureHandler;
 import com.example.auth.handler.MfaAwareAuthenticationSuccessHandler;
 import com.example.auth.repository.UserRepository;
 import com.nimbusds.jose.jwk.JWKSet;
@@ -9,9 +10,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -47,7 +46,6 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
-  private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
   private final UserRepository userRepository;
 
@@ -119,19 +117,17 @@ public class SecurityConfig {
   @Order(2)
   public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http, 
       MfaAuthenticationFilter mfaAuthenticationFilter,
-      MfaAwareAuthenticationSuccessHandler mfaAwareSuccessHandler) throws Exception {
+      MfaAwareAuthenticationSuccessHandler mfaAwareSuccessHandler,
+      LoginFailureHandler loginFailureHandler) throws Exception {
     http.authorizeHttpRequests(authorize -> authorize
-        .requestMatchers("/login", "/oauth2/consent", "/mfa/**", "/css/**", "/js/**", "/error").permitAll()
+        .requestMatchers("/login", "/users/register", "/oauth2/consent", "/mfa/**", "/css/**", "/js/**", "/error").permitAll()
         .anyRequest().authenticated()
     );
     http.formLogin(form -> form
         .loginPage("/login")
         .permitAll()
         .successHandler(mfaAwareSuccessHandler)
-        .failureHandler((request, response, exception) -> {
-          log.warn("用户登录失败（IP: {}）: {}", getClientIp(request), exception.getMessage());
-          response.sendRedirect("/login?error");
-        })
+        .failureHandler(loginFailureHandler)
     );
     http.addFilterAfter(mfaAuthenticationFilter, 
         org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
@@ -161,7 +157,7 @@ public class SecurityConfig {
         "http://localhost:4173",
         "http://127.0.0.1:4173");
     config.setAllowedOrigins(origins);
-    config.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("*"));
     config.setAllowCredentials(true);
     config.setMaxAge(3600L);
@@ -270,9 +266,4 @@ public class SecurityConfig {
         .build();
   }
 
-  private static String getClientIp(HttpServletRequest request) {
-    String xf = request.getHeader("X-Forwarded-For");
-    if (xf != null) return xf.split(",")[0].trim();
-    return request.getRemoteAddr();
-  }
 }

@@ -3,6 +3,7 @@ package com.example.auth.service;
 import com.example.auth.entity.User;
 import com.example.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -17,11 +18,14 @@ import java.util.stream.Collectors;
 public class CustomUserDetailsService implements UserDetailsService {
 
   private final UserRepository userRepository;
+  private final AccountLockService accountLockService;
 
   @Override
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
     User user = userRepository.findByUsername(username)
         .orElseThrow(() -> new UsernameNotFoundException("用户不存在: " + username));
+
+    boolean locked = accountLockService.isAccountLocked(user);
 
     var authorities = Arrays.stream(user.getRoles().split(","))
         .map(String::trim)
@@ -32,7 +36,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         .username(user.getUsername())
         .password(user.getPassword())
         .disabled(!user.getEnabled())
-        .accountLocked(false)
+        .accountLocked(locked)
         .credentialsExpired(false)
         .accountExpired(false)
         .authorities(authorities)

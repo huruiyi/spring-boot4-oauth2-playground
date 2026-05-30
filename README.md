@@ -609,3 +609,59 @@ A: 确保三个服务按顺序启动：Auth Server → Resource Server → Clien
 
 ### Q: Redis 连接失败？
 A: 确认 Redis 服务已启动，默认无需密码。如果 Redis 设置了密码，修改 `application.yml` 中 `spring.data.redis.password`。
+
+## 账户锁定与解锁
+
+### 锁定机制
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `auth.lock.max-failed-attempts` | 5 | 连续登录失败达到该次数后锁定账户 |
+| `auth.lock.auto-unlock-minutes` | 30 | 锁定后自动解锁等待时间（分钟） |
+
+**锁定流程：**
+
+1. 用户登录失败，`AccountLockService.recordFailedAttempt()` 累加 `failed_attempts`
+2. 达到 `max-failed-attempts` 阈值后，`account_non_locked` 设为 `false`，记录 `locked_at` 时间戳
+3. 下次登录时 `CustomUserDetailsService` 检查锁定状态，抛出 `LockedException`
+4. `LoginFailureHandler` 将用户重定向到 `/login?locked`，页面显示"账户已被锁定，请稍后再试或联系管理员"
+
+**管理员豁免：** 拥有 `ROLE_ADMIN` 角色的用户登录失败时不会触发锁定，仅记录日志。防止管理员账户被锁后无法进入管理页面解锁。
+
+**IP 限速：** 配合账户锁定，基于 Redis 实现 IP 级别限速（单 IP 5 分钟内最多 20 次失败），防止暴力破解。
+
+### 解锁方式
+
+| 方式 | 操作 | 适用场景 |
+|------|------|----------|
+| **自动解锁** | 等待 `auto-unlock-minutes` 分钟后，下次登录自动解锁 | 常规场景，无需干预 |
+| **管理员页面解锁** | 登录管理员账户 → 访问 `/users` → 点击已锁定用户的「解锁」按钮 | 管理员解锁其他用户 |
+| **API 解锁** | `POST /users/{userId}/unlock` | 程序化调用 |
+| **数据库解锁** | 执行 SQL 直接重置锁定状态 | 管理员自身被锁或无法登录时 |
+
+**数据库解锁 SQL：**
+
+```sql
+UPDATE sys_user
+SET account_non_locked = 1, failed_attempts = 0, locked_at = NULL
+WHERE username = '要解锁的用户名';
+```
+
+### 数据库字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `failed_attempts` | `int` | 连续登录失败次数，登录成功后重置为 0 |
+| `account_non_locked` | `tinyint(1)` | 1 = 未锁定，0 = 已锁定 |
+| `locked_at` | `timestamp` | 账户锁定时间，用于计算自动解锁 |
+
+### 相关代码
+
+| 文件 | 说明 |
+|------|------|
+| `AccountLockService.java` | 锁定/解锁/自动解锁核心逻辑 |
+| `LoginFailureHandler.java` | 登录失败时记录失败次数，锁定账户时重定向 |
+| `MfaAwareAuthenticationSuccessHandler.java` | 登录成功时重置失败计数并解锁 |
+| `CustomUserDetailsService.java` | 加载用户时检查锁定状态（触发自动解锁判断） |
+| `LoginRateLimitService.java` | IP 级别限速（Redis） |
+| `UserController.java` | 管理员手动解锁端点 `POST /users/{id}/unlock` |

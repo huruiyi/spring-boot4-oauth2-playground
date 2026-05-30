@@ -2,6 +2,8 @@ package com.example.auth.handler;
 
 import com.example.auth.entity.User;
 import com.example.auth.repository.UserRepository;
+import com.example.auth.service.AccountLockService;
+import com.example.auth.service.LoginRateLimitService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -22,6 +24,8 @@ import java.io.IOException;
 public class MfaAwareAuthenticationSuccessHandler extends SavedRequestAwareAuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
+    private final AccountLockService accountLockService;
+    private final LoginRateLimitService loginRateLimitService;
     
     private static final String MFA_REQUIRED = "MFA_REQUIRED";
     private static final String SAVED_REQUEST = "SAVED_REQUEST";
@@ -33,6 +37,9 @@ public class MfaAwareAuthenticationSuccessHandler extends SavedRequestAwareAuthe
         String username = authentication.getName();
         String clientIp = getClientIp(request);
         log.info("用户 {} 登录成功（IP: {}）", username, clientIp);
+        
+        accountLockService.resetFailedAttempts(username);
+        loginRateLimitService.resetIpAttempts(clientIp);
         
         var userOpt = userRepository.findByUsername(username);
         

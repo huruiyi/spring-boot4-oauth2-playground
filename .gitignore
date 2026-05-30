@@ -48,7 +48,5 @@ temp/
 .env.local
 .env.*.local
 
-# Secrets (keys stored in user config directory, ignore if placed in project root)
+# Secrets (keys stored in user config directory)
 /config/
-*.key
-*.pem

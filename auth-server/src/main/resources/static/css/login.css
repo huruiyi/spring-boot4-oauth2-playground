@@ -92,3 +92,19 @@ body {
   background: #efe;
   color: #3a3;
 }
+
+.register-link {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 14px;
+  color: #999;
+}
+
+.register-link a {
+  color: #667eea;
+  text-decoration: none;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
