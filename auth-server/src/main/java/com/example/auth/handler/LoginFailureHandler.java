@@ -2,6 +2,7 @@ package com.example.auth.handler;
 
 import com.example.auth.service.AccountLockService;
 import com.example.auth.service.LoginRateLimitService;
+import com.example.auth.util.ClientIpResolver;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,12 +24,13 @@ public class LoginFailureHandler implements AuthenticationFailureHandler {
 
     private final AccountLockService accountLockService;
     private final LoginRateLimitService loginRateLimitService;
+    private final ClientIpResolver clientIpResolver;
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
                                         AuthenticationException exception) throws IOException, ServletException {
         String username = request.getParameter("username");
-        String clientIp = getClientIp(request);
+        String clientIp = clientIpResolver.resolve(request);
 
         loginRateLimitService.recordIpFailure(clientIp);
 
@@ -52,13 +54,5 @@ public class LoginFailureHandler implements AuthenticationFailureHandler {
         }
 
         response.sendRedirect("/login?error");
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String xf = request.getHeader("X-Forwarded-For");
-        if (xf != null && !xf.isEmpty()) {
-            return xf.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }

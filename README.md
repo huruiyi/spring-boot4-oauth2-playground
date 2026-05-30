@@ -630,6 +630,28 @@ A: 确认 Redis 服务已启动，默认无需密码。如果 Redis 设置了密
 
 **IP 限速：** 配合账户锁定，基于 Redis 实现 IP 级别限速（单 IP 5 分钟内最多 20 次失败），防止暴力破解。
 
+### 客户端 IP 识别与防伪造
+
+`X-Forwarded-For` 头可被客户端伪造，直接信任会导致攻击者绕过 IP 限速。本项目通过 `ClientIpResolver` 实现安全 IP 解析：
+
+| 策略 | 说明 |
+|------|------|
+| **可信代理白名单** | 仅当 `request.getRemoteAddr()` 在 `auth.trusted-proxies` 列表中时，才读取 `X-Forwarded-For` |
+| **从右向左遍历** | XFF 格式为 `客户端IP, 代理1, 代理2`，从右向左跳过所有可信代理，取第一个非可信代理 IP |
+| **X-Real-IP 兜底** | 无有效 XFF 时尝试 `X-Real-IP` 头（Nginx 常用） |
+| **直连回退** | 以上均无时使用 `getRemoteAddr()` |
+
+**配置示例**（Nginx 反向代理场景）：
+
+```yaml
+auth:
+  trusted-proxies:
+    - 127.0.0.1
+    - 10.0.0.1    # Nginx 内网 IP
+```
+
+> **安全提示**：`trusted-proxies` 为空时，完全忽略 `X-Forwarded-For`，仅使用 `getRemoteAddr()`，防止伪造。生产环境部署在反向代理后时，必须配置此列表。
+
 ### 解锁方式
 
 | 方式 | 操作 | 适用场景 |
@@ -664,4 +686,5 @@ WHERE username = '要解锁的用户名';
 | `MfaAwareAuthenticationSuccessHandler.java` | 登录成功时重置失败计数并解锁 |
 | `CustomUserDetailsService.java` | 加载用户时检查锁定状态（触发自动解锁判断） |
 | `LoginRateLimitService.java` | IP 级别限速（Redis） |
+| `ClientIpResolver.java` | 安全 IP 解析（可信代理白名单 + XFF 防伪造） |
 | `UserController.java` | 管理员手动解锁端点 `POST /users/{id}/unlock` |

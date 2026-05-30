@@ -5,6 +5,7 @@ auth:
   lock:
     max-failed-attempts: 5
     auto-unlock-minutes: 30
+  trusted-proxies:
 
 rsa-key:
   file: ${user.home}/.config/spring-boot4-oauth2/rsa-key.json

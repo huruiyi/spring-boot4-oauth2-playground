@@ -1,9 +1,9 @@
 package com.example.auth.handler;
 
-import com.example.auth.entity.User;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.service.AccountLockService;
 import com.example.auth.service.LoginRateLimitService;
+import com.example.auth.util.ClientIpResolver;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,6 +26,7 @@ public class MfaAwareAuthenticationSuccessHandler extends SavedRequestAwareAuthe
     private final UserRepository userRepository;
     private final AccountLockService accountLockService;
     private final LoginRateLimitService loginRateLimitService;
+    private final ClientIpResolver clientIpResolver;
     
     private static final String MFA_REQUIRED = "MFA_REQUIRED";
     private static final String SAVED_REQUEST = "SAVED_REQUEST";
@@ -35,7 +36,7 @@ public class MfaAwareAuthenticationSuccessHandler extends SavedRequestAwareAuthe
                                         Authentication authentication) throws ServletException, IOException {
         
         String username = authentication.getName();
-        String clientIp = getClientIp(request);
+        String clientIp = clientIpResolver.resolve(request);
         log.info("用户 {} 登录成功（IP: {}）", username, clientIp);
         
         accountLockService.resetFailedAttempts(username);
@@ -66,13 +67,5 @@ public class MfaAwareAuthenticationSuccessHandler extends SavedRequestAwareAuthe
         session.setAttribute(MFA_REQUIRED, true);
         log.debug("用户 {} 已启用 MFA，重定向到 /mfa/verify", authentication.getName());
         response.sendRedirect("/mfa/verify");
-    }
-    
-    private String getClientIp(HttpServletRequest request) {
-        String xf = request.getHeader("X-Forwarded-For");
-        if (xf != null && !xf.isEmpty()) {
-            return xf.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }
